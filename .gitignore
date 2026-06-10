@@ -1,0 +1,29 @@
+# Archivos compilados de Java
+*.class
+
+# Carpetas de compilación de IDEs (Eclipse, VS Code, IntelliJ)
+bin/
+out/
+build/
+
+# Configuraciones locales de IDEs (no se deben subir)
+.idea/
+*.iml
+*.iws
+.settings/
+.classpath
+.project
+.vscode/
+
+# Ignorar archivos empaquetados por defecto
+*.jar
+*.war
+*.zip
+*.tar.gz
+
+# EXCEPCIÓN: Sí queremos subir el driver de PostgreSQL en la carpeta lib
+!lib/postgresql-*.jar
+
+# Logs de error
+*.log
+hs_err_pid*
