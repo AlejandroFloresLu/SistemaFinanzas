@@ -85,6 +85,174 @@ src/
 - **Borrado Inteligente / Controlado**: Antes de permitir un borrado de una entidad, el sistema debe verificar si tiene elementos hijos o historial asociado. Solo después se permite el borrado usando `JOptionPane.showConfirmDialog()` para reafirmar la acción.
 - **Formularios Dinámicos**: Los componentes en pestañas como "Modificar" se deben autocompletar escuchando las selecciones dentro de la tabla mediante `ListSelectionListener`.
 
+## 7. Estándares de Programación
+
+Con el fin de garantizar un código legible, mantenible y coherente a lo largo de todo el proyecto, se establecen los siguientes estándares de programación que deben ser aplicados de manera obligatoria por todos los integrantes del equipo de desarrollo.
+
+### 7.1 Reglas de Nomenclatura
+
+**Clases**
+Los nombres de las clases se escriben en formato PascalCase, comenzando siempre con letra mayúscula. El nombre debe ser un sustantivo que describa claramente la entidad o responsabilidad de la clase.
+
+| Correcto | Incorrecto |
+|----------|------------|
+| Cuenta | cuenta |
+| CuentaMD | cuentaMD |
+| VentanaCuentas | ventana_cuentas |
+| MenuPrincipal | menuprincipal |
+
+### 7.2 Métodos
+
+Los métodos se escriben en formato camelCase, comenzando con letra minúscula. El nombre debe iniciar con un verbo que indique la acción que realiza.
+
+| Correcto | Incorrecto |
+|----------|------------|
+| verificarDP() | VerificarDP() |
+| limpiarDatos() | limpiar_datos() |
+| getNombre() | ObtenerNombre() |
+| setTipoCuenta() | Set_TipoCuenta() |
+
+### 7.3 Variables y atributos
+
+Las variables locales y los atributos de instancia se escriben en formato camelCase. Los nombres deben ser descriptivos y evitar abreviaciones ambiguas.
+
+| Correcto | Incorrecto |
+|----------|------------|
+| idCuenta | id |
+| tipoCuenta | tc |
+| resultSet | rs2 |
+| nombreServicio | nS |
+
+### 7.4 Paquetes
+
+Los paquetes se escriben completamente en minúsculas, sin guiones ni caracteres especiales.
+
+```java
+package vista;
+package modelo;
+package datos;
+```
+
+### 7.5 Estructura del Proyecto
+
+La estructura de carpetas y archivos del proyecto es la siguiente:
+
+```text
+GestionDeCuentas/
+├── .vscode/
+│   ├── settings.json
+├── bin/
+│   ├── db.properties
+└── src/
+    ├── vista/
+    ├── modelo/
+    └── datos/
+```
+
+El archivo `db.properties` centraliza todos los parámetros de conexión a la base de datos y se ubica fuera del código fuente para permitir su modificación sin necesidad de recompilar el proyecto. Su contenido es el siguiente:
+
+```properties
+# db.properties — parámetros de conexión a PostgreSQL
+db.host=localhost
+db.puerto=5432
+db.nombre=gestion_cuentas
+db.usuario=postgres
+db.password=postgres
+```
+
+La clase `Conexion.java` es la única del proyecto que lee este archivo, utilizando `getClassLoader().getResourceAsStream()` para cargarlo desde el classpath. Ninguna otra clase accede a parámetros de configuración directamente.
+
+### 7.6 Estructura y Estilo del Código
+
+Se utiliza una indentación de 4 espacios por cada nivel de anidamiento. No se permiten tabuladores. Todo bloque de código encerrado entre llaves debe estar correctamente indentado respecto a su contenedor.
+
+```java
+public boolean verificarDP() {
+    if (nombre == null || nombre.isEmpty()) {
+        return false;
+    }
+    if (!tipoCuenta.equals("Dinero Disponible") &&
+        !tipoCuenta.equals("Tarjetas de Crédito") &&
+        !tipoCuenta.equals("Deudas/Préstamos") &&
+        !tipoCuenta.equals("Inversiones/Ahorros")) {
+        return false;
+    }
+    return true;
+}
+```
+
+**Llaves**
+Las llaves de apertura se colocan al final de la misma línea de la declaración, nunca en una línea aparte. Las llaves de cierre van siempre en su propia línea.
+
+```java
+// Correcto
+public void limpiarDatos() {
+    idCuenta = 0;
+    nombre = "";
+}
+
+// Incorrecto
+public void limpiarDatos()
+{
+    idCuenta = 0;
+}
+```
+
+**Longitud de línea**
+Ninguna línea de código debe superar los 100 caracteres. Si una sentencia es demasiado larga, se divide en múltiples líneas aplicando indentación adicional de 8 espacios en las líneas de continuación.
+
+**Espaciado**
+Se coloca un espacio antes y después de cada operador. Se deja una línea en blanco entre métodos para mejorar la legibilidad. No se dejan líneas en blanco innecesarias dentro de un mismo método.
+
+### 7.7 Buenas Prácticas
+
+**Comentarios**
+Cada clase debe incluir un comentario de encabezado en formato Javadoc que describa su propósito, la capa a la que pertenece y el autor:
+
+```java
+/**
+ * Clase de acceso a datos para la entidad Cuenta.
+ * Capa: Datos (MD).
+ * Gestiona las operaciones CRUD sobre la tabla cuenta en PostgreSQL.
+ *
+ * @author
+ */
+public class CuentaMD {
+```
+
+Los métodos cuya lógica no sea evidente deben incluir un comentario que explique su propósito, parámetros y valor de retorno:
+
+```java
+/**
+ * Verifica si una cuenta tiene pagos activos asociados en la base de datos.
+ * Se utiliza para bloquear la eliminación de cuentas con movimientos.
+ *
+ * @param cuenta objeto Cuenta con el idCuenta a verificar
+ * @return true si existen pagos asociados, false en caso contrario
+ */
+public boolean verificarMovimientos(Cuenta cuenta) {
+```
+
+**Responsabilidad única**
+Cada clase tiene una única responsabilidad definida por su capa. Las clases de la vista no contienen lógica de negocio ni sentencias SQL. Las clases MD no contienen lógica de validación de negocio. Las clases del modelo no acceden directamente a la base de datos. La clase `Conexion.java` es la única autorizada para leer el archivo `db.properties` y gestionar la conexión a PostgreSQL.
+
+**Parámetros mediante objetos**
+Ningún método acepta tipos primitivos sueltos como parámetros. Toda la información se transmite entre capas mediante objetos instanciados de las clases del modelo.
+
+**Manejo de excepciones**
+Todo bloque de código que interactúe con la base de datos debe estar encerrado en un bloque `try-catch` que capture `SQLException`. El error debe registrarse en consola y el método debe retornar `false` o `null` para que la vista notifique al usuario correctamente.
+
+```java
+try {
+    PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
+    ps.setString(1, cuenta.getNombre());
+    return ps.executeUpdate() > 0;
+} catch (SQLException e) {
+    e.printStackTrace();
+    return false;
+}
+```
+
 ---
 
 ## 🤖 Contexto para la Inteligencia Artificial (System Prompt)
