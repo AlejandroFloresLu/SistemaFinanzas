@@ -1,7 +1,7 @@
 package modelo;
 
 import datos.CategoriaMD;
-import java.sql.ResultSet;
+import java.util.List;
 
 /**
  * Clase que representa la entidad Categoria del sistema.
@@ -15,7 +15,6 @@ public class Categoria {
 
     private int idCategoria = 0;
     private String nombre = "";
-    private String descripcion = "";
     private boolean estado = true;
 
     // ── Getters ──────────────────────────────────────────────
@@ -36,15 +35,6 @@ public class Categoria {
      */
     public String getNombre() {
         return nombre;
-    }
-
-    /**
-     * Obtiene la descripción de la categoría.
-     *
-     * @return descripción de la categoría
-     */
-    public String getDescripcion() {
-        return descripcion;
     }
 
     /**
@@ -77,15 +67,6 @@ public class Categoria {
     }
 
     /**
-     * Establece la descripción de la categoría aplicando trim().
-     *
-     * @param descripcion descripción a asignar
-     */
-    public void setDescripcion(String descripcion) {
-        this.descripcion = descripcion.trim();
-    }
-
-    /**
      * Establece el estado de la categoría.
      *
      * @param estado true para activa, false para inactiva
@@ -115,7 +96,6 @@ public class Categoria {
     public void limpiarDatos() {
         idCategoria = 0;
         nombre = "";
-        descripcion = "";
         estado = true;
     }
 
@@ -155,7 +135,7 @@ public class Categoria {
      *
      * @return ResultSet con todas las categorías activas
      */
-    public ResultSet buscarCategorias() {
+    public List<Categoria> buscarCategorias() {
         CategoriaMD categoriaMD = new CategoriaMD();
         return categoriaMD.consultar();
     }
@@ -166,8 +146,21 @@ public class Categoria {
      * @param filtro objeto Categoria con los criterios de búsqueda
      * @return ResultSet con las categorías que coinciden con el filtro
      */
-    public ResultSet buscarCategorias(Categoria filtro) {
+    public List<Categoria> buscarCategorias(Categoria filtro) {
         CategoriaMD categoriaMD = new CategoriaMD();
         return categoriaMD.consultar(filtro);
+    }
+
+    public boolean existeNombre() {
+        datos.CategoriaMD md = new datos.CategoriaMD();
+        return md.existeNombre(this);
+    }
+    public boolean existeNombreExcluyendo() {
+        datos.CategoriaMD md = new datos.CategoriaMD();
+        return md.existeNombreExcluyendo(this);
+    }
+    public boolean verificarMovimientos() {
+        datos.CategoriaMD md = new datos.CategoriaMD();
+        return md.verificarMovimientos(this);
     }
 }

@@ -26,14 +26,13 @@ public class ServiciosMD {
      * @return true si la inserción fue exitosa, false en caso contrario
      */
     public boolean insertar(Servicio servicio) {
-        String sql = "INSERT INTO servicio (id_categoria, nombre, monto_estimado, estado) "
-                + "VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO servicio (id_categoria, nombre, estado) "
+                + "VALUES (?, ?, ?)";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
             ps.setInt(1, servicio.getIdCategoria());
             ps.setString(2, servicio.getNombre());
-            ps.setDouble(3, servicio.getMontoEstimado());
-            ps.setBoolean(4, servicio.getEstado());
+            ps.setBoolean(3, servicio.getEstado());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -48,14 +47,13 @@ public class ServiciosMD {
      * @return true si la modificación fue exitosa, false en caso contrario
      */
     public boolean modificar(Servicio servicio) {
-        String sql = "UPDATE servicio SET id_categoria = ?, nombre = ?, "
-                + "monto_estimado = ? WHERE id_servicio = ?";
+        String sql = "UPDATE servicio SET id_categoria = ?, nombre = ? "
+                + "WHERE id_servicio = ?";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
             ps.setInt(1, servicio.getIdCategoria());
             ps.setString(2, servicio.getNombre());
-            ps.setDouble(3, servicio.getMontoEstimado());
-            ps.setInt(4, servicio.getIdServicio());
+            ps.setInt(3, servicio.getIdServicio());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -87,69 +85,67 @@ public class ServiciosMD {
      *
      * @return ResultSet con todos los servicios activos
      */
-    public ResultSet consultar() {
-        String sql = "SELECT s.id_servicio, s.id_categoria, s.nombre, "
-                + "s.monto_estimado, s.estado, c.nombre AS nombre_categoria "
-                + "FROM servicio s "
+    public List<Servicio> consultar() {
+        List<Servicio> lista = new ArrayList<>();
+        String sql = "SELECT s.id_servicio, s.id_categoria, c.nombre AS nombre_categoria, "
+                + "s.nombre, s.estado FROM servicio s "
                 + "INNER JOIN categoria c ON s.id_categoria = c.id_categoria "
                 + "WHERE s.estado = true ORDER BY s.id_servicio";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
-            return ps.executeQuery();
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Servicio s = new Servicio();
+                s.setIdServicio(rs.getInt("id_servicio"));
+                s.setIdCategoria(rs.getInt("id_categoria"));
+                s.setNombre(rs.getString("nombre"));
+                s.setEstado(rs.getBoolean("estado"));
+                // Extra para la tabla
+                s.setNombreCategoria(rs.getString("nombre_categoria"));
+                lista.add(s);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
-            return null;
         }
+        return lista;
     }
 
     /**
-     * Consulta servicios activos filtrados por categoría y/o nombre.
+     * Consulta servicios activos filtrados por nombre.
      *
      * @param filtro objeto Servicio con los criterios de búsqueda
-     * @return ResultSet con los servicios que coinciden con el filtro
+     * @return List con los servicios que coinciden con el filtro
      */
-    public ResultSet consultar(Servicio filtro) {
-        StringBuilder sql = new StringBuilder(
-                "SELECT s.id_servicio, s.id_categoria, s.nombre, "
-                        + "s.monto_estimado, s.estado, c.nombre AS nombre_categoria "
-                        + "FROM servicio s "
-                        + "INNER JOIN categoria c ON s.id_categoria = c.id_categoria "
-                        + "WHERE s.estado = true");
-        List<Object> parametros = new ArrayList<>();
-
-        if (filtro.getIdCategoria() > 0) {
-            sql.append(" AND s.id_categoria = ?");
-            parametros.add(filtro.getIdCategoria());
-        }
-        if (filtro.getNombre() != null && !filtro.getNombre().isEmpty()) {
-            sql.append(" AND s.nombre LIKE ?");
-            parametros.add("%" + filtro.getNombre() + "%");
-        }
-        sql.append(" ORDER BY s.id_servicio");
-
+    public List<Servicio> consultar(Servicio filtro) {
+        List<Servicio> lista = new ArrayList<>();
+        String sql = "SELECT s.id_servicio, s.id_categoria, c.nombre AS nombre_categoria, "
+                + "s.nombre, s.estado FROM servicio s "
+                + "INNER JOIN categoria c ON s.id_categoria = c.id_categoria "
+                + "WHERE s.estado = true AND s.nombre LIKE ? ORDER BY s.id_servicio";
         try {
-            PreparedStatement ps = Conexion.getConexion().prepareStatement(sql.toString());
-            for (int i = 0; i < parametros.size(); i++) {
-                Object param = parametros.get(i);
-                if (param instanceof Integer) {
-                    ps.setInt(i + 1, (Integer) param);
-                } else {
-                    ps.setString(i + 1, (String) param);
-                }
+            PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
+            ps.setString(1, "%" + filtro.getNombre() + "%");
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Servicio s = new Servicio();
+                s.setIdServicio(rs.getInt("id_servicio"));
+                s.setIdCategoria(rs.getInt("id_categoria"));
+                s.setNombre(rs.getString("nombre"));
+                s.setEstado(rs.getBoolean("estado"));
+                s.setNombreCategoria(rs.getString("nombre_categoria"));
+                lista.add(s);
             }
-            return ps.executeQuery();
         } catch (SQLException e) {
             e.printStackTrace();
-            return null;
         }
+        return lista;
     }
 
     /**
-     * Verifica si ya existe un servicio con el mismo nombre dentro de
-     * la misma categoría.
+     * Verifica si ya existe un servicio con el mismo nombre en la base de datos.
      *
-     * @param servicio objeto Servicio con el nombre e idCategoria a verificar
-     * @return true si el nombre ya existe en la categoría, false en caso contrario
+     * @param servicio objeto Servicio con el nombre a verificar
+     * @return true si el nombre ya existe, false en caso contrario
      */
     public boolean existeNombre(Servicio servicio) {
         String sql = "SELECT COUNT(*) FROM servicio WHERE LOWER(nombre) = LOWER(?) "
@@ -222,7 +218,7 @@ public class ServiciosMD {
      */
     public List<Servicio> cargarServicioList() {
         List<Servicio> lista = new ArrayList<>();
-        String sql = "SELECT id_servicio, id_categoria, nombre, monto_estimado, estado "
+        String sql = "SELECT id_servicio, id_categoria, nombre, estado "
                 + "FROM servicio WHERE estado = true ORDER BY id_servicio";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
@@ -232,7 +228,6 @@ public class ServiciosMD {
                 servicio.setIdServicio(rs.getInt("id_servicio"));
                 servicio.setIdCategoria(rs.getInt("id_categoria"));
                 servicio.setNombre(rs.getString("nombre"));
-                servicio.setMontoEstimado(rs.getDouble("monto_estimado"));
                 servicio.setEstado(rs.getBoolean("estado"));
                 lista.add(servicio);
             }

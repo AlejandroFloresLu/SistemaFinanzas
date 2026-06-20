@@ -1,12 +1,11 @@
 package vista;
 
-import datos.CategoriaMD;
 import modelo.Categoria;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.util.List;
+
 
 /**
  * Ventana de gestión de categorías del sistema.
@@ -18,20 +17,19 @@ import java.sql.SQLException;
  */
 public class VentanaCategoria extends JFrame {
 
-    private JTabbedPane tabbedPane;
+    private JPanel panelPrincipal;
+    private CardLayout cardLayout;
 
     // ── Pestaña Agregar ──────────────────────────────────────
     private JTextField txtNombreAgregar;
-    private JTextField txtDescripcionAgregar;
     private JButton btnGuardarAgregar;
-    private JButton btnLimpiarAgregar;
 
     // ── Pestaña Modificar ────────────────────────────────────
     private JTable tablaModificar;
     private DefaultTableModel modeloModificar;
     private JTextField txtNombreModificar;
-    private JTextField txtDescripcionModificar;
-    private JButton btnModificar;
+    private JButton btnAbrirFormularioModificar;
+    private JButton btnGuardarModificacion;
     private int idCategoriaSeleccionadaModificar = 0;
 
     // ── Pestaña Eliminar ─────────────────────────────────────
@@ -64,15 +62,44 @@ public class VentanaCategoria extends JFrame {
      * Inicializa y organiza todos los componentes gráficos.
      */
     private void initComponentes() {
-        tabbedPane = new JTabbedPane();
-        tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        JPanel panelOpciones = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+        JButton btnNuevo = new JButton("Nueva Categoría");
+        JButton btnModificarOpcion = new JButton("Modificar Categoría");
+        JButton btnEliminarOpcion = new JButton("Eliminar Categoría");
+        JButton btnConsultar = new JButton("Consultar Categorías");
 
-        tabbedPane.addTab("➕ Agregar", crearPanelAgregar());
-        tabbedPane.addTab("✏️ Modificar", crearPanelModificar());
-        tabbedPane.addTab("🗑️ Eliminar", crearPanelEliminar());
-        tabbedPane.addTab("🔍 Consultar", crearPanelConsultar());
+        panelOpciones.add(btnNuevo);
+        panelOpciones.add(btnModificarOpcion);
+        panelOpciones.add(btnEliminarOpcion);
+        panelOpciones.add(btnConsultar);
 
-        setContentPane(tabbedPane);
+        cardLayout = new CardLayout();
+        panelPrincipal = new JPanel(cardLayout);
+
+        JPanel panelVacio = new JPanel();
+        panelPrincipal.add(panelVacio, "Vacio");
+        panelPrincipal.add(crearPanelAgregar(), "Agregar");
+        panelPrincipal.add(crearPanelModificar(), "Modificar");
+        panelPrincipal.add(crearPanelFormularioModificar(), "FormularioModificar");
+        panelPrincipal.add(crearPanelEliminar(), "Eliminar");
+        panelPrincipal.add(crearPanelConsultar(), "Consultar");
+
+        JPanel panelFondo = new JPanel(new BorderLayout());
+        panelFondo.add(panelOpciones, BorderLayout.NORTH);
+        panelFondo.add(panelPrincipal, BorderLayout.CENTER);
+        setContentPane(panelFondo);
+
+        // Eventos de los botones
+        btnNuevo.addActionListener(e -> cardLayout.show(panelPrincipal, "Agregar"));
+        btnModificarOpcion.addActionListener(e -> {
+            cargarTablaModificar();
+            cardLayout.show(panelPrincipal, "Modificar");
+        });
+        btnEliminarOpcion.addActionListener(e -> {
+            cargarTablaEliminar();
+            cardLayout.show(panelPrincipal, "Eliminar");
+        });
+        btnConsultar.addActionListener(e -> cardLayout.show(panelPrincipal, "Consultar"));
     }
 
     /**
@@ -90,7 +117,14 @@ public class VentanaCategoria extends JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         txtNombreAgregar = new JTextField(20);
-        txtDescripcionAgregar = new JTextField(20);
+        txtNombreAgregar.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                char c = evt.getKeyChar();
+                if (!Character.isLetter(c) && !Character.isWhitespace(c)) {
+                    evt.consume();
+                }
+            }
+        });
 
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -98,27 +132,14 @@ public class VentanaCategoria extends JFrame {
         gbc.gridx = 1;
         formulario.add(txtNombreAgregar, gbc);
 
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        formulario.add(new JLabel("Descripción:"), gbc);
-        gbc.gridx = 1;
-        formulario.add(txtDescripcionAgregar, gbc);
-
         JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         btnGuardarAgregar = new JButton("💾 Guardar");
         btnGuardarAgregar.setBackground(new Color(46, 204, 113));
         btnGuardarAgregar.setForeground(Color.WHITE);
-        btnGuardarAgregar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnGuardarAgregar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
         btnGuardarAgregar.setFocusPainted(false);
 
-        btnLimpiarAgregar = new JButton("🧹 Limpiar");
-        btnLimpiarAgregar.setBackground(new Color(149, 165, 166));
-        btnLimpiarAgregar.setForeground(Color.WHITE);
-        btnLimpiarAgregar.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btnLimpiarAgregar.setFocusPainted(false);
-
         panelBotones.add(btnGuardarAgregar);
-        panelBotones.add(btnLimpiarAgregar);
 
         panel.add(formulario, BorderLayout.CENTER);
         panel.add(panelBotones, BorderLayout.SOUTH);
@@ -135,7 +156,7 @@ public class VentanaCategoria extends JFrame {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         modeloModificar = new DefaultTableModel(
-                new String[] { "ID", "Nombre", "Descripción" }, 0) {
+                new String[] { "ID", "Nombre" }, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -143,7 +164,29 @@ public class VentanaCategoria extends JFrame {
         };
         tablaModificar = new JTable(modeloModificar);
         JScrollPane scrollModificar = new JScrollPane(tablaModificar);
-        scrollModificar.setPreferredSize(new Dimension(750, 200));
+
+        btnAbrirFormularioModificar = new JButton("✏️ Modificar");
+        btnAbrirFormularioModificar.setBackground(new Color(52, 152, 219));
+        btnAbrirFormularioModificar.setForeground(Color.WHITE);
+        btnAbrirFormularioModificar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
+        btnAbrirFormularioModificar.setFocusPainted(false);
+
+        JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        panelBoton.add(btnAbrirFormularioModificar);
+
+        panel.add(scrollModificar, BorderLayout.CENTER);
+        panel.add(panelBoton, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    /**
+     * Crea el panel del formulario para modificar.
+     *
+     * @return JPanel con el formulario
+     */
+    private JPanel crearPanelFormularioModificar() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JPanel formulario = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
@@ -151,7 +194,14 @@ public class VentanaCategoria extends JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         txtNombreModificar = new JTextField(20);
-        txtDescripcionModificar = new JTextField(20);
+        txtNombreModificar.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                char c = evt.getKeyChar();
+                if (!Character.isLetter(c) && !Character.isWhitespace(c)) {
+                    evt.consume();
+                }
+            }
+        });
 
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -159,26 +209,17 @@ public class VentanaCategoria extends JFrame {
         gbc.gridx = 1;
         formulario.add(txtNombreModificar, gbc);
 
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        formulario.add(new JLabel("Descripción:"), gbc);
-        gbc.gridx = 1;
-        formulario.add(txtDescripcionModificar, gbc);
+        btnGuardarModificacion = new JButton("💾 Guardar");
+        btnGuardarModificacion.setBackground(new Color(46, 204, 113));
+        btnGuardarModificacion.setForeground(Color.WHITE);
+        btnGuardarModificacion.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
+        btnGuardarModificacion.setFocusPainted(false);
 
-        btnModificar = new JButton("✏️ Modificar");
-        btnModificar.setBackground(new Color(52, 152, 219));
-        btnModificar.setForeground(Color.WHITE);
-        btnModificar.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btnModificar.setFocusPainted(false);
-
-        JPanel panelInferior = new JPanel(new BorderLayout(10, 10));
-        panelInferior.add(formulario, BorderLayout.CENTER);
         JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        panelBoton.add(btnModificar);
-        panelInferior.add(panelBoton, BorderLayout.SOUTH);
+        panelBoton.add(btnGuardarModificacion);
 
-        panel.add(scrollModificar, BorderLayout.NORTH);
-        panel.add(panelInferior, BorderLayout.CENTER);
+        panel.add(formulario, BorderLayout.CENTER);
+        panel.add(panelBoton, BorderLayout.SOUTH);
         return panel;
     }
 
@@ -192,7 +233,7 @@ public class VentanaCategoria extends JFrame {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         modeloEliminar = new DefaultTableModel(
-                new String[] { "ID", "Nombre", "Descripción" }, 0) {
+                new String[] { "ID", "Nombre" }, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -204,7 +245,7 @@ public class VentanaCategoria extends JFrame {
         btnEliminar = new JButton("🗑️ Eliminar");
         btnEliminar.setBackground(new Color(231, 76, 60));
         btnEliminar.setForeground(Color.WHITE);
-        btnEliminar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnEliminar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
         btnEliminar.setFocusPainted(false);
 
         JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.CENTER));
@@ -232,12 +273,12 @@ public class VentanaCategoria extends JFrame {
         btnBuscarConsultar = new JButton("🔍 Buscar");
         btnBuscarConsultar.setBackground(new Color(52, 152, 219));
         btnBuscarConsultar.setForeground(Color.WHITE);
-        btnBuscarConsultar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnBuscarConsultar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
         btnBuscarConsultar.setFocusPainted(false);
         panelFiltros.add(btnBuscarConsultar);
 
         modeloConsultar = new DefaultTableModel(
-                new String[] { "ID", "Nombre", "Descripción" }, 0) {
+                new String[] { "ID", "Nombre" }, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -263,97 +304,73 @@ public class VentanaCategoria extends JFrame {
         // ── Pestaña Agregar ──────────────────────────────────
         btnGuardarAgregar.addActionListener(e -> {
             Categoria categoria = new Categoria();
-            categoria.setNombre(txtNombreAgregar.getText());
-            categoria.setDescripcion(txtDescripcionAgregar.getText());
+            categoria.setNombre(txtNombreAgregar.getText().trim().toLowerCase());
 
             if (!categoria.verificarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "El nombre de la categoría es obligatorio.");
                 return;
             }
 
-            CategoriaMD categoriaMD = new CategoriaMD();
-            if (categoriaMD.existeNombre(categoria)) {
-                MenuPrincipal.mostrarMensaje(
+            if (categoria.existeNombre()) {
+                this.mostrarMensaje(
                         "Ya existe una categoría con ese nombre. "
                                 + "Ingrese otro nombre.");
                 return;
             }
 
             if (categoria.grabarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Categoría registrada exitosamente.");
                 categoria.limpiarDatos();
                 limpiarFormularioAgregar();
             } else {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Problemas con bases de datos. "
                                 + "Contactar a soporte.");
             }
         });
 
-        btnLimpiarAgregar.addActionListener(e -> {
-            limpiarFormularioAgregar();
-        });
-
-        // ── Pestaña Modificar ────────────────────────────────
-        tabbedPane.addChangeListener(e -> {
-            int indice = tabbedPane.getSelectedIndex();
-            if (indice == 1) {
-                cargarTablaModificar();
-            } else if (indice == 2) {
-                cargarTablaEliminar();
-            }
-        });
-
-        tablaModificar.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                int fila = tablaModificar.getSelectedRow();
-                if (fila >= 0) {
-                    idCategoriaSeleccionadaModificar = Integer.parseInt(
-                            modeloModificar.getValueAt(fila, 0).toString());
-                    txtNombreModificar.setText(
-                            modeloModificar.getValueAt(fila, 1).toString());
-                    Object desc = modeloModificar.getValueAt(fila, 2);
-                    txtDescripcionModificar.setText(
-                            desc != null ? desc.toString() : "");
-                }
-            }
-        });
-
-        btnModificar.addActionListener(e -> {
-            if (idCategoriaSeleccionadaModificar == 0) {
-                MenuPrincipal.mostrarMensaje(
-                        "Seleccione una categoría de la tabla.");
+        btnAbrirFormularioModificar.addActionListener(e -> {
+            int fila = tablaModificar.getSelectedRow();
+            if (fila < 0) {
+                this.mostrarMensaje("Seleccione una categoría de la tabla.");
                 return;
             }
+            idCategoriaSeleccionadaModificar = Integer.parseInt(
+                    modeloModificar.getValueAt(fila, 0).toString());
+            txtNombreModificar.setText(
+                    modeloModificar.getValueAt(fila, 1).toString());
+            
+            cardLayout.show(panelPrincipal, "FormularioModificar");
+        });
 
+        btnGuardarModificacion.addActionListener(e -> {
             Categoria categoria = new Categoria();
             categoria.setIdCategoria(idCategoriaSeleccionadaModificar);
-            categoria.setNombre(txtNombreModificar.getText());
-            categoria.setDescripcion(txtDescripcionModificar.getText());
+            categoria.setNombre(txtNombreModificar.getText().trim().toLowerCase());
 
             if (!categoria.verificarDP()) {
-                MenuPrincipal.mostrarMensaje(
-                        "El nombre de la categoría es obligatorio.");
+                this.mostrarMensaje(
+                        "Complete el nombre de la categoría.");
                 return;
             }
 
-            CategoriaMD categoriaMD = new CategoriaMD();
-            if (categoriaMD.existeNombreExcluyendo(categoria)) {
-                MenuPrincipal.mostrarMensaje(
+            if (categoria.existeNombreExcluyendo()) {
+                this.mostrarMensaje(
                         "Ya existe otra categoría con ese nombre. "
                                 + "Ingrese un nombre diferente.");
                 return;
             }
 
             if (categoria.modificarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Categoría modificada exitosamente.");
                 cargarTablaModificar();
                 limpiarFormularioModificar();
+                cardLayout.show(panelPrincipal, "Modificar");
             } else {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Problemas con bases de datos. "
                                 + "Contactar a soporte.");
             }
@@ -372,7 +389,7 @@ public class VentanaCategoria extends JFrame {
 
         btnEliminar.addActionListener(e -> {
             if (idCategoriaSeleccionadaEliminar == 0) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Seleccione una categoría de la tabla.");
                 return;
             }
@@ -390,21 +407,20 @@ public class VentanaCategoria extends JFrame {
             Categoria categoria = new Categoria();
             categoria.setIdCategoria(idCategoriaSeleccionadaEliminar);
 
-            CategoriaMD categoriaMD = new CategoriaMD();
-            if (categoriaMD.verificarMovimientos(categoria)) {
-                MenuPrincipal.mostrarMensaje(
+            if (categoria.verificarMovimientos()) {
+                this.mostrarMensaje(
                         "No se puede eliminar la categoría porque "
                                 + "tiene servicios asociados.");
                 return;
             }
 
             if (categoria.borrarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Categoría eliminada exitosamente.");
                 cargarTablaEliminar();
                 idCategoriaSeleccionadaEliminar = 0;
             } else {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Problemas con bases de datos. "
                                 + "Contactar a soporte.");
             }
@@ -422,20 +438,14 @@ public class VentanaCategoria extends JFrame {
     private void cargarTablaModificar() {
         modeloModificar.setRowCount(0);
         Categoria categoria = new Categoria();
-        ResultSet rs = categoria.buscarCategorias();
-        try {
-            if (rs != null) {
-                while (rs.next()) {
-                    modeloModificar.addRow(new Object[] {
-                            rs.getInt("id_categoria"),
-                            rs.getString("nombre"),
-                            rs.getString("descripcion")
-                    });
-                }
+        List<Categoria> lista = categoria.buscarCategorias();
+        if (lista != null) {
+            for (Categoria c : lista) {
+                modeloModificar.addRow(new Object[] {
+                        c.getIdCategoria(),
+                        c.getNombre()
+                });
             }
-        } catch (SQLException ex) {
-            MenuPrincipal.mostrarMensaje(
-                    "Problemas con bases de datos. Contactar a soporte.");
         }
     }
 
@@ -445,20 +455,14 @@ public class VentanaCategoria extends JFrame {
     private void cargarTablaEliminar() {
         modeloEliminar.setRowCount(0);
         Categoria categoria = new Categoria();
-        ResultSet rs = categoria.buscarCategorias();
-        try {
-            if (rs != null) {
-                while (rs.next()) {
-                    modeloEliminar.addRow(new Object[] {
-                            rs.getInt("id_categoria"),
-                            rs.getString("nombre"),
-                            rs.getString("descripcion")
-                    });
-                }
+        List<Categoria> lista = categoria.buscarCategorias();
+        if (lista != null) {
+            for (Categoria c : lista) {
+                modeloEliminar.addRow(new Object[] {
+                        c.getIdCategoria(),
+                        c.getNombre()
+                });
             }
-        } catch (SQLException ex) {
-            MenuPrincipal.mostrarMensaje(
-                    "Problemas con bases de datos. Contactar a soporte.");
         }
     }
 
@@ -469,8 +473,7 @@ public class VentanaCategoria extends JFrame {
         modeloConsultar.setRowCount(0);
         lblMensajeConsulta.setText(" ");
         Categoria categoria = new Categoria();
-        ResultSet rs;
-
+        List<Categoria> rs;
         String nombreFiltro = txtNombreConsultar.getText().trim();
         if (nombreFiltro.isEmpty()) {
             rs = categoria.buscarCategorias();
@@ -480,31 +483,22 @@ public class VentanaCategoria extends JFrame {
             rs = categoria.buscarCategorias(filtro);
         }
 
-        try {
-            if (rs != null) {
-                boolean hayResultados = false;
-                while (rs.next()) {
-                    hayResultados = true;
-                    modeloConsultar.addRow(new Object[] {
-                            rs.getInt("id_categoria"),
-                            rs.getString("nombre"),
-                            rs.getString("descripcion")
-                    });
-                }
-                if (!hayResultados) {
-                    if (nombreFiltro.isEmpty()) {
-                        lblMensajeConsulta.setText(
-                                "No hay categorías registradas.");
-                    } else {
-                        lblMensajeConsulta.setText(
-                                "No se encontraron resultados "
-                                        + "para su búsqueda.");
-                    }
+        if (rs != null) {
+            boolean hayResultados = false;
+            for (Categoria c : rs) {
+                hayResultados = true;
+                modeloConsultar.addRow(new Object[] {
+                        c.getIdCategoria(),
+                        c.getNombre()
+                });
+            }
+            if (!hayResultados) {
+                if (nombreFiltro.isEmpty()) {
+                    lblMensajeConsulta.setText("No hay categorías registradas.");
+                } else {
+                    lblMensajeConsulta.setText("No se encontraron resultados para su búsqueda.");
                 }
             }
-        } catch (SQLException ex) {
-            MenuPrincipal.mostrarMensaje(
-                    "Problemas con bases de datos. Contactar a soporte.");
         }
     }
 
@@ -513,7 +507,6 @@ public class VentanaCategoria extends JFrame {
      */
     private void limpiarFormularioAgregar() {
         txtNombreAgregar.setText("");
-        txtDescripcionAgregar.setText("");
     }
 
     /**
@@ -521,8 +514,15 @@ public class VentanaCategoria extends JFrame {
      */
     private void limpiarFormularioModificar() {
         txtNombreModificar.setText("");
-        txtDescripcionModificar.setText("");
         idCategoriaSeleccionadaModificar = 0;
         tablaModificar.clearSelection();
+    }
+
+    public void mostrarListado() {
+        // Método para cumplir con el diagrama de clases
+    }
+
+    public void mostrarMensaje(String texto) {
+        JOptionPane.showMessageDialog(this, texto);
     }
 }

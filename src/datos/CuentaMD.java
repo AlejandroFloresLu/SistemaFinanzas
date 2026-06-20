@@ -25,15 +25,14 @@ public class CuentaMD {
      * @return true si la inserción fue exitosa, false en caso contrario
      */
     public boolean insertar(Cuenta cuenta) {
-        String sql = "INSERT INTO cuenta (id_usuario, tipo_cuenta, nombre, saldo_inicial, estado) "
-                + "VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO cuenta (id_usuario, tipo_cuenta, nombre, estado) "
+                + "VALUES (?, ?, ?, ?)";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
             ps.setInt(1, cuenta.getIdUsuario());
             ps.setString(2, cuenta.getTipoCuenta());
             ps.setString(3, cuenta.getNombre());
-            ps.setDouble(4, cuenta.getSaldoInicial());
-            ps.setBoolean(5, cuenta.getEstado());
+            ps.setBoolean(4, cuenta.getEstado());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -48,14 +47,13 @@ public class CuentaMD {
      * @return true si la modificación fue exitosa, false en caso contrario
      */
     public boolean modificar(Cuenta cuenta) {
-        String sql = "UPDATE cuenta SET tipo_cuenta = ?, nombre = ?, saldo_inicial = ? "
+        String sql = "UPDATE cuenta SET tipo_cuenta = ?, nombre = ? "
                 + "WHERE id_cuenta = ?";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
             ps.setString(1, cuenta.getTipoCuenta());
             ps.setString(2, cuenta.getNombre());
-            ps.setDouble(3, cuenta.getSaldoInicial());
-            ps.setInt(4, cuenta.getIdCuenta());
+            ps.setInt(3, cuenta.getIdCuenta());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -88,80 +86,64 @@ public class CuentaMD {
      * @param idUsuario identificador del usuario autenticado
      * @return ResultSet con todas las cuentas del usuario
      */
-    public ResultSet consultar(int idUsuario) {
-        String sql = "SELECT id_cuenta, id_usuario, tipo_cuenta, nombre, saldo_inicial, estado "
+    public List<Cuenta> consultar(int idUsuario) {
+        List<Cuenta> lista = new ArrayList<>();
+        String sql = "SELECT id_cuenta, id_usuario, tipo_cuenta, nombre, estado "
                 + "FROM cuenta WHERE id_usuario = ? AND estado = true ORDER BY id_cuenta";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
             ps.setInt(1, idUsuario);
-            return ps.executeQuery();
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Cuenta c = new Cuenta();
+                c.setIdCuenta(rs.getInt("id_cuenta"));
+                c.setIdUsuario(rs.getInt("id_usuario"));
+                c.setTipoCuenta(rs.getString("tipo_cuenta"));
+                c.setNombre(rs.getString("nombre"));
+                c.setEstado(rs.getBoolean("estado"));
+                lista.add(c);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
-            return null;
         }
+        return lista;
     }
 
     /**
-     * Consulta todas las cuentas activas (sin filtro de usuario).
+     * Consulta cuentas activas filtradas por nombre y asociadas a un usuario.
      *
-     * @return ResultSet con todas las cuentas activas
+     * @param filtro objeto Cuenta con el idUsuario y los criterios de búsqueda
+     * @return List con las cuentas que coinciden con el filtro
      */
-    public ResultSet consultar() {
-        String sql = "SELECT id_cuenta, id_usuario, tipo_cuenta, nombre, saldo_inicial, estado "
-                + "FROM cuenta WHERE estado = true ORDER BY id_cuenta";
+    public List<Cuenta> consultar(Cuenta filtro) {
+        List<Cuenta> lista = new ArrayList<>();
+        String sql = "SELECT id_cuenta, id_usuario, tipo_cuenta, nombre, estado "
+                + "FROM cuenta WHERE id_usuario = ? AND estado = true "
+                + "AND nombre LIKE ? ORDER BY id_cuenta";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
-            return ps.executeQuery();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    /**
-     * Consulta cuentas activas del usuario filtradas por tipo de cuenta y/o nombre.
-     *
-     * @param filtro objeto Cuenta con los criterios de búsqueda (incluye idUsuario)
-     * @return ResultSet con las cuentas que coinciden con el filtro
-     */
-    public ResultSet consultar(Cuenta filtro) {
-        StringBuilder sql = new StringBuilder(
-                "SELECT id_cuenta, id_usuario, tipo_cuenta, nombre, saldo_inicial, estado "
-                        + "FROM cuenta WHERE id_usuario = ? AND estado = true");
-        List<Object> parametros = new ArrayList<>();
-        parametros.add(filtro.getIdUsuario());
-
-        if (filtro.getTipoCuenta() != null && !filtro.getTipoCuenta().isEmpty()) {
-            sql.append(" AND tipo_cuenta = ?");
-            parametros.add(filtro.getTipoCuenta());
-        }
-        if (filtro.getNombre() != null && !filtro.getNombre().isEmpty()) {
-            sql.append(" AND nombre LIKE ?");
-            parametros.add("%" + filtro.getNombre() + "%");
-        }
-        sql.append(" ORDER BY id_cuenta");
-
-        try {
-            PreparedStatement ps = Conexion.getConexion().prepareStatement(sql.toString());
-            for (int i = 0; i < parametros.size(); i++) {
-                Object param = parametros.get(i);
-                if (param instanceof Integer) {
-                    ps.setInt(i + 1, (Integer) param);
-                } else {
-                    ps.setString(i + 1, (String) param);
-                }
+            ps.setInt(1, filtro.getIdUsuario());
+            ps.setString(2, "%" + filtro.getNombre() + "%");
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Cuenta c = new Cuenta();
+                c.setIdCuenta(rs.getInt("id_cuenta"));
+                c.setIdUsuario(rs.getInt("id_usuario"));
+                c.setTipoCuenta(rs.getString("tipo_cuenta"));
+                c.setNombre(rs.getString("nombre"));
+                c.setEstado(rs.getBoolean("estado"));
+                lista.add(c);
             }
-            return ps.executeQuery();
         } catch (SQLException e) {
             e.printStackTrace();
-            return null;
         }
+        return lista;
     }
 
     /**
-     * Verifica si ya existe una cuenta con el mismo nombre para el usuario dado.
+     * Verifica si ya existe una cuenta con el mismo nombre.
      *
-     * @param cuenta objeto Cuenta con el nombre e idUsuario a verificar
+     * @param cuenta objeto Cuenta con el nombre y idUsuario a verificar
      * @return true si el nombre ya existe, false en caso contrario
      */
     public boolean existeNombre(Cuenta cuenta) {
@@ -236,7 +218,7 @@ public class CuentaMD {
      */
     public List<Cuenta> cargarCuentaList(int idUsuario) {
         List<Cuenta> lista = new ArrayList<>();
-        String sql = "SELECT id_cuenta, id_usuario, tipo_cuenta, nombre, saldo_inicial, estado "
+        String sql = "SELECT id_cuenta, id_usuario, tipo_cuenta, nombre, estado "
                 + "FROM cuenta WHERE id_usuario = ? AND estado = true ORDER BY id_cuenta";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
@@ -248,7 +230,6 @@ public class CuentaMD {
                 cuenta.setIdUsuario(rs.getInt("id_usuario"));
                 cuenta.setTipoCuenta(rs.getString("tipo_cuenta"));
                 cuenta.setNombre(rs.getString("nombre"));
-                cuenta.setSaldoInicial(rs.getDouble("saldo_inicial"));
                 cuenta.setEstado(rs.getBoolean("estado"));
                 lista.add(cuenta);
             }

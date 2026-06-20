@@ -1,14 +1,13 @@
 package vista;
 
-import datos.CategoriaMD;
-import datos.ServiciosMD;
+
 import modelo.Categoria;
 import modelo.Servicio;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.util.List;
+
 import java.util.List;
 
 /**
@@ -21,14 +20,13 @@ import java.util.List;
  */
 public class VentanaServicios extends JFrame {
 
-    private JTabbedPane tabbedPane;
+    private JPanel panelPrincipal;
+    private CardLayout cardLayout;
 
     // ── Pestaña Agregar ──────────────────────────────────────
     private JComboBox<String> cboCategoriaAgregar;
     private JTextField txtNombreAgregar;
-    private JTextField txtMontoAgregar;
     private JButton btnGuardarAgregar;
-    private JButton btnLimpiarAgregar;
     private List<Categoria> listaCategorias;
 
     // ── Pestaña Modificar ────────────────────────────────────
@@ -36,8 +34,8 @@ public class VentanaServicios extends JFrame {
     private DefaultTableModel modeloModificar;
     private JComboBox<String> cboCategoriaModificar;
     private JTextField txtNombreModificar;
-    private JTextField txtMontoModificar;
-    private JButton btnModificar;
+    private JButton btnAbrirFormularioModificar;
+    private JButton btnGuardarModificacion;
     private int idServicioSeleccionadoModificar = 0;
     private List<Categoria> listaCategoriasModificar;
 
@@ -73,15 +71,51 @@ public class VentanaServicios extends JFrame {
      * Inicializa y organiza todos los componentes gráficos.
      */
     private void initComponentes() {
-        tabbedPane = new JTabbedPane();
-        tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        JPanel panelOpciones = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+        JButton btnNuevo = new JButton("Nuevo Servicio");
+        JButton btnModificarOpcion = new JButton("Modificar Servicio");
+        JButton btnEliminarOpcion = new JButton("Eliminar Servicio");
+        JButton btnConsultar = new JButton("Consultar Servicios");
 
-        tabbedPane.addTab("➕ Agregar", crearPanelAgregar());
-        tabbedPane.addTab("✏️ Modificar", crearPanelModificar());
-        tabbedPane.addTab("🗑️ Eliminar", crearPanelEliminar());
-        tabbedPane.addTab("🔍 Consultar", crearPanelConsultar());
+        panelOpciones.add(btnNuevo);
+        panelOpciones.add(btnModificarOpcion);
+        panelOpciones.add(btnEliminarOpcion);
+        panelOpciones.add(btnConsultar);
 
-        setContentPane(tabbedPane);
+        cardLayout = new CardLayout();
+        panelPrincipal = new JPanel(cardLayout);
+
+        JPanel panelVacio = new JPanel();
+        panelPrincipal.add(panelVacio, "Vacio");
+        panelPrincipal.add(crearPanelAgregar(), "Agregar");
+        panelPrincipal.add(crearPanelModificar(), "Modificar");
+        panelPrincipal.add(crearPanelFormularioModificar(), "FormularioModificar");
+        panelPrincipal.add(crearPanelEliminar(), "Eliminar");
+        panelPrincipal.add(crearPanelConsultar(), "Consultar");
+
+        JPanel panelFondo = new JPanel(new BorderLayout());
+        panelFondo.add(panelOpciones, BorderLayout.NORTH);
+        panelFondo.add(panelPrincipal, BorderLayout.CENTER);
+        setContentPane(panelFondo);
+
+        // Eventos de los botones
+        btnNuevo.addActionListener(e -> {
+            listaCategorias = cargarCategorias(cboCategoriaAgregar);
+            cardLayout.show(panelPrincipal, "Agregar");
+        });
+        btnModificarOpcion.addActionListener(e -> {
+            listaCategoriasModificar = cargarCategorias(cboCategoriaModificar);
+            cargarTablaModificar();
+            cardLayout.show(panelPrincipal, "Modificar");
+        });
+        btnEliminarOpcion.addActionListener(e -> {
+            cargarTablaEliminar();
+            cardLayout.show(panelPrincipal, "Eliminar");
+        });
+        btnConsultar.addActionListener(e -> {
+            cargarCategoriasConsultar();
+            cardLayout.show(panelPrincipal, "Consultar");
+        });
     }
 
     /**
@@ -92,8 +126,8 @@ public class VentanaServicios extends JFrame {
      */
     private List<Categoria> cargarCategorias(JComboBox<String> combo) {
         combo.removeAllItems();
-        CategoriaMD categoriaMD = new CategoriaMD();
-        List<Categoria> categorias = categoriaMD.cargarCategoriaList();
+        modelo.Categoria categoria = new modelo.Categoria();
+        List<Categoria> categorias = categoria.buscarCategorias();
         for (Categoria cat : categorias) {
             combo.addItem(cat.getNombre());
         }
@@ -132,8 +166,14 @@ public class VentanaServicios extends JFrame {
 
         cboCategoriaAgregar = new JComboBox<>();
         txtNombreAgregar = new JTextField(20);
-        txtMontoAgregar = new JTextField(20);
-        txtMontoAgregar.setText("0.00");
+        txtNombreAgregar.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                char c = evt.getKeyChar();
+                if (!Character.isLetter(c) && !Character.isWhitespace(c)) {
+                    evt.consume();
+                }
+            }
+        });
 
         listaCategorias = cargarCategorias(cboCategoriaAgregar);
 
@@ -149,27 +189,14 @@ public class VentanaServicios extends JFrame {
         gbc.gridx = 1;
         formulario.add(txtNombreAgregar, gbc);
 
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        formulario.add(new JLabel("Monto Estimado:"), gbc);
-        gbc.gridx = 1;
-        formulario.add(txtMontoAgregar, gbc);
-
         JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         btnGuardarAgregar = new JButton("💾 Guardar");
         btnGuardarAgregar.setBackground(new Color(46, 204, 113));
         btnGuardarAgregar.setForeground(Color.WHITE);
-        btnGuardarAgregar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnGuardarAgregar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
         btnGuardarAgregar.setFocusPainted(false);
 
-        btnLimpiarAgregar = new JButton("🧹 Limpiar");
-        btnLimpiarAgregar.setBackground(new Color(149, 165, 166));
-        btnLimpiarAgregar.setForeground(Color.WHITE);
-        btnLimpiarAgregar.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btnLimpiarAgregar.setFocusPainted(false);
-
         panelBotones.add(btnGuardarAgregar);
-        panelBotones.add(btnLimpiarAgregar);
 
         panel.add(formulario, BorderLayout.CENTER);
         panel.add(panelBotones, BorderLayout.SOUTH);
@@ -186,8 +213,7 @@ public class VentanaServicios extends JFrame {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         modeloModificar = new DefaultTableModel(
-                new String[] { "ID", "Categoría", "Nombre",
-                        "Monto Estimado" },
+                new String[] { "ID", "Categoría", "Nombre" },
                 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
@@ -196,7 +222,29 @@ public class VentanaServicios extends JFrame {
         };
         tablaModificar = new JTable(modeloModificar);
         JScrollPane scrollModificar = new JScrollPane(tablaModificar);
-        scrollModificar.setPreferredSize(new Dimension(850, 200));
+
+        btnAbrirFormularioModificar = new JButton("✏️ Modificar");
+        btnAbrirFormularioModificar.setBackground(new Color(52, 152, 219));
+        btnAbrirFormularioModificar.setForeground(Color.WHITE);
+        btnAbrirFormularioModificar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
+        btnAbrirFormularioModificar.setFocusPainted(false);
+
+        JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        panelBoton.add(btnAbrirFormularioModificar);
+
+        panel.add(scrollModificar, BorderLayout.CENTER);
+        panel.add(panelBoton, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    /**
+     * Crea el panel del formulario para modificar.
+     *
+     * @return JPanel con el formulario
+     */
+    private JPanel crearPanelFormularioModificar() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JPanel formulario = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
@@ -205,7 +253,14 @@ public class VentanaServicios extends JFrame {
 
         cboCategoriaModificar = new JComboBox<>();
         txtNombreModificar = new JTextField(20);
-        txtMontoModificar = new JTextField(20);
+        txtNombreModificar.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                char c = evt.getKeyChar();
+                if (!Character.isLetter(c) && !Character.isWhitespace(c)) {
+                    evt.consume();
+                }
+            }
+        });
 
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -219,26 +274,17 @@ public class VentanaServicios extends JFrame {
         gbc.gridx = 1;
         formulario.add(txtNombreModificar, gbc);
 
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        formulario.add(new JLabel("Monto Estimado:"), gbc);
-        gbc.gridx = 1;
-        formulario.add(txtMontoModificar, gbc);
+        btnGuardarModificacion = new JButton("💾 Guardar");
+        btnGuardarModificacion.setBackground(new Color(46, 204, 113));
+        btnGuardarModificacion.setForeground(Color.WHITE);
+        btnGuardarModificacion.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
+        btnGuardarModificacion.setFocusPainted(false);
 
-        btnModificar = new JButton("✏️ Modificar");
-        btnModificar.setBackground(new Color(52, 152, 219));
-        btnModificar.setForeground(Color.WHITE);
-        btnModificar.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btnModificar.setFocusPainted(false);
-
-        JPanel panelInferior = new JPanel(new BorderLayout(10, 10));
-        panelInferior.add(formulario, BorderLayout.CENTER);
         JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        panelBoton.add(btnModificar);
-        panelInferior.add(panelBoton, BorderLayout.SOUTH);
+        panelBoton.add(btnGuardarModificacion);
 
-        panel.add(scrollModificar, BorderLayout.NORTH);
-        panel.add(panelInferior, BorderLayout.CENTER);
+        panel.add(formulario, BorderLayout.CENTER);
+        panel.add(panelBoton, BorderLayout.SOUTH);
         return panel;
     }
 
@@ -252,8 +298,7 @@ public class VentanaServicios extends JFrame {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         modeloEliminar = new DefaultTableModel(
-                new String[] { "ID", "Categoría", "Nombre",
-                        "Monto Estimado" },
+                new String[] { "ID", "Categoría", "Nombre" },
                 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
@@ -266,7 +311,7 @@ public class VentanaServicios extends JFrame {
         btnEliminar = new JButton("🗑️ Eliminar");
         btnEliminar.setBackground(new Color(231, 76, 60));
         btnEliminar.setForeground(Color.WHITE);
-        btnEliminar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnEliminar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
         btnEliminar.setFocusPainted(false);
 
         JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.CENTER));
@@ -300,13 +345,12 @@ public class VentanaServicios extends JFrame {
         btnBuscarConsultar = new JButton("🔍 Buscar");
         btnBuscarConsultar.setBackground(new Color(52, 152, 219));
         btnBuscarConsultar.setForeground(Color.WHITE);
-        btnBuscarConsultar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnBuscarConsultar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
         btnBuscarConsultar.setFocusPainted(false);
         panelFiltros.add(btnBuscarConsultar);
 
         modeloConsultar = new DefaultTableModel(
-                new String[] { "ID", "Categoría", "Nombre",
-                        "Monto Estimado" },
+                new String[] { "ID", "Categoría", "Nombre" },
                 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
@@ -333,7 +377,7 @@ public class VentanaServicios extends JFrame {
         // ── Pestaña Agregar ──────────────────────────────────
         btnGuardarAgregar.addActionListener(e -> {
             if (listaCategorias == null || listaCategorias.isEmpty()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "No hay categorías disponibles. "
                                 + "Registre al menos una categoría primero.");
                 return;
@@ -343,28 +387,17 @@ public class VentanaServicios extends JFrame {
             servicio.setIdCategoria(
                     obtenerIdCategoriaSeleccionada(
                             cboCategoriaAgregar, listaCategorias));
-            servicio.setNombre(txtNombreAgregar.getText());
-
-            try {
-                servicio.setMontoEstimado(
-                        Double.parseDouble(
-                                txtMontoAgregar.getText().trim()));
-            } catch (NumberFormatException ex) {
-                MenuPrincipal.mostrarMensaje(
-                        "El monto estimado debe ser un número válido.");
-                return;
-            }
+            servicio.setNombre(txtNombreAgregar.getText().trim().toLowerCase());
 
             if (!servicio.verificarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Complete todos los campos obligatorios "
                                 + "(categoría y nombre).");
                 return;
             }
 
-            ServiciosMD serviciosMD = new ServiciosMD();
-            if (serviciosMD.existeNombre(servicio)) {
-                MenuPrincipal.mostrarMensaje(
+            if (servicio.existeNombre()) {
+                this.mostrarMensaje(
                         "Ya existe un servicio con ese nombre en "
                                 + "la categoría seleccionada. "
                                 + "Ingrese otro nombre.");
@@ -372,87 +405,50 @@ public class VentanaServicios extends JFrame {
             }
 
             if (servicio.grabarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Servicio registrado exitosamente.");
                 servicio.limpiarDatos();
                 limpiarFormularioAgregar();
             } else {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Problemas con bases de datos. "
                                 + "Contactar a soporte.");
             }
         });
 
-        btnLimpiarAgregar.addActionListener(e -> {
-            limpiarFormularioAgregar();
-        });
-
-        // ── Pestaña Modificar ────────────────────────────────
-        tabbedPane.addChangeListener(e -> {
-            int indice = tabbedPane.getSelectedIndex();
-            if (indice == 0) {
-                listaCategorias = cargarCategorias(cboCategoriaAgregar);
-            } else if (indice == 1) {
-                listaCategoriasModificar = cargarCategorias(
-                        cboCategoriaModificar);
-                cargarTablaModificar();
-            } else if (indice == 2) {
-                cargarTablaEliminar();
-            } else if (indice == 3) {
-                cargarCategoriasConsultar();
-            }
-        });
-
-        tablaModificar.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                int fila = tablaModificar.getSelectedRow();
-                if (fila >= 0) {
-                    idServicioSeleccionadoModificar = Integer.parseInt(
-                            modeloModificar.getValueAt(fila, 0).toString());
-                    String categoriaNombre = modeloModificar.getValueAt(fila, 1).toString();
-                    cboCategoriaModificar.setSelectedItem(categoriaNombre);
-                    txtNombreModificar.setText(
-                            modeloModificar.getValueAt(fila, 2).toString());
-                    txtMontoModificar.setText(
-                            modeloModificar.getValueAt(fila, 3).toString());
-                }
-            }
-        });
-
-        btnModificar.addActionListener(e -> {
-            if (idServicioSeleccionadoModificar == 0) {
-                MenuPrincipal.mostrarMensaje(
-                        "Seleccione un servicio de la tabla.");
+        btnAbrirFormularioModificar.addActionListener(e -> {
+            int fila = tablaModificar.getSelectedRow();
+            if (fila < 0) {
+                this.mostrarMensaje("Seleccione un servicio de la tabla.");
                 return;
             }
+            idServicioSeleccionadoModificar = Integer.parseInt(
+                    modeloModificar.getValueAt(fila, 0).toString());
+            String categoriaNombre = modeloModificar.getValueAt(fila, 1).toString();
+            cboCategoriaModificar.setSelectedItem(categoriaNombre);
+            txtNombreModificar.setText(
+                    modeloModificar.getValueAt(fila, 2).toString());
+            
+            cardLayout.show(panelPrincipal, "FormularioModificar");
+        });
 
+        btnGuardarModificacion.addActionListener(e -> {
             Servicio servicio = new Servicio();
             servicio.setIdServicio(idServicioSeleccionadoModificar);
             servicio.setIdCategoria(
                     obtenerIdCategoriaSeleccionada(
                             cboCategoriaModificar,
                             listaCategoriasModificar));
-            servicio.setNombre(txtNombreModificar.getText());
-
-            try {
-                servicio.setMontoEstimado(
-                        Double.parseDouble(
-                                txtMontoModificar.getText().trim()));
-            } catch (NumberFormatException ex) {
-                MenuPrincipal.mostrarMensaje(
-                        "El monto estimado debe ser un número válido.");
-                return;
-            }
+            servicio.setNombre(txtNombreModificar.getText().trim().toLowerCase());
 
             if (!servicio.verificarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Complete todos los campos obligatorios.");
                 return;
             }
 
-            ServiciosMD serviciosMD = new ServiciosMD();
-            if (serviciosMD.existeNombreExcluyendo(servicio)) {
-                MenuPrincipal.mostrarMensaje(
+            if (servicio.existeNombreExcluyendo()) {
+                this.mostrarMensaje(
                         "Ya existe otro servicio con ese nombre "
                                 + "en la categoría seleccionada. "
                                 + "Ingrese un nombre diferente.");
@@ -460,12 +456,13 @@ public class VentanaServicios extends JFrame {
             }
 
             if (servicio.modificarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Servicio modificado exitosamente.");
                 cargarTablaModificar();
                 limpiarFormularioModificar();
+                cardLayout.show(panelPrincipal, "Modificar");
             } else {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Problemas con bases de datos. "
                                 + "Contactar a soporte.");
             }
@@ -484,7 +481,7 @@ public class VentanaServicios extends JFrame {
 
         btnEliminar.addActionListener(e -> {
             if (idServicioSeleccionadoEliminar == 0) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Seleccione un servicio de la tabla.");
                 return;
             }
@@ -502,21 +499,20 @@ public class VentanaServicios extends JFrame {
             Servicio servicio = new Servicio();
             servicio.setIdServicio(idServicioSeleccionadoEliminar);
 
-            ServiciosMD serviciosMD = new ServiciosMD();
-            if (serviciosMD.verificarMovimientos(servicio)) {
-                MenuPrincipal.mostrarMensaje(
+            if (servicio.verificarMovimientos(servicio)) {
+                this.mostrarMensaje(
                         "No se puede eliminar el servicio porque "
                                 + "tiene movimientos asociados.");
                 return;
             }
 
             if (servicio.borrarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Servicio eliminado exitosamente.");
                 cargarTablaEliminar();
                 idServicioSeleccionadoEliminar = 0;
             } else {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Problemas con bases de datos. "
                                 + "Contactar a soporte.");
             }
@@ -535,8 +531,8 @@ public class VentanaServicios extends JFrame {
     private void cargarCategoriasConsultar() {
         cboCategoriaConsultar.removeAllItems();
         cboCategoriaConsultar.addItem("-- Todas --");
-        CategoriaMD categoriaMD = new CategoriaMD();
-        listaCategoriasConsultar = categoriaMD.cargarCategoriaList();
+        Categoria categoria = new Categoria();
+        listaCategoriasConsultar = categoria.buscarCategorias();
         for (Categoria cat : listaCategoriasConsultar) {
             cboCategoriaConsultar.addItem(cat.getNombre());
         }
@@ -548,21 +544,15 @@ public class VentanaServicios extends JFrame {
     private void cargarTablaModificar() {
         modeloModificar.setRowCount(0);
         Servicio servicio = new Servicio();
-        ResultSet rs = servicio.buscarServicios();
-        try {
-            if (rs != null) {
-                while (rs.next()) {
-                    modeloModificar.addRow(new Object[] {
-                            rs.getInt("id_servicio"),
-                            rs.getString("nombre_categoria"),
-                            rs.getString("nombre"),
-                            rs.getDouble("monto_estimado")
-                    });
-                }
+        List<Servicio> lista = servicio.buscarServicios();
+        if (lista != null) {
+            for (Servicio s : lista) {
+                modeloModificar.addRow(new Object[] {
+                        s.getIdServicio(),
+                        s.getNombreCategoria(),
+                        s.getNombre()
+                });
             }
-        } catch (SQLException ex) {
-            MenuPrincipal.mostrarMensaje(
-                    "Problemas con bases de datos. Contactar a soporte.");
         }
     }
 
@@ -572,21 +562,15 @@ public class VentanaServicios extends JFrame {
     private void cargarTablaEliminar() {
         modeloEliminar.setRowCount(0);
         Servicio servicio = new Servicio();
-        ResultSet rs = servicio.buscarServicios();
-        try {
-            if (rs != null) {
-                while (rs.next()) {
-                    modeloEliminar.addRow(new Object[] {
-                            rs.getInt("id_servicio"),
-                            rs.getString("nombre_categoria"),
-                            rs.getString("nombre"),
-                            rs.getDouble("monto_estimado")
-                    });
-                }
+        List<Servicio> lista = servicio.buscarServicios();
+        if (lista != null) {
+            for (Servicio s : lista) {
+                modeloEliminar.addRow(new Object[] {
+                        s.getIdServicio(),
+                        s.getNombreCategoria(),
+                        s.getNombre()
+                });
             }
-        } catch (SQLException ex) {
-            MenuPrincipal.mostrarMensaje(
-                    "Problemas con bases de datos. Contactar a soporte.");
         }
     }
 
@@ -611,42 +595,33 @@ public class VentanaServicios extends JFrame {
             filtro.setNombre(nombreFiltro);
         }
 
-        ServiciosMD serviciosMD = new ServiciosMD();
-        ResultSet rs;
+        Servicio servicio = new Servicio();
+        List<Servicio> rs;
         if (filtro.getIdCategoria() == 0
                 && (filtro.getNombre() == null
                         || filtro.getNombre().isEmpty())) {
-            rs = serviciosMD.consultar();
+            rs = servicio.buscarServicios();
         } else {
-            rs = serviciosMD.consultar(filtro);
+            rs = servicio.buscarServicios(filtro);
         }
 
-        try {
-            if (rs != null) {
-                boolean hayResultados = false;
-                while (rs.next()) {
-                    hayResultados = true;
-                    modeloConsultar.addRow(new Object[] {
-                            rs.getInt("id_servicio"),
-                            rs.getString("nombre_categoria"),
-                            rs.getString("nombre"),
-                            rs.getDouble("monto_estimado")
-                    });
-                }
-                if (!hayResultados) {
-                    if (nombreFiltro.isEmpty() && indiceCategoria <= 0) {
-                        lblMensajeConsulta.setText(
-                                "No hay servicios registrados.");
-                    } else {
-                        lblMensajeConsulta.setText(
-                                "No se encontraron resultados "
-                                        + "para su búsqueda.");
-                    }
+        if (rs != null) {
+            boolean hayResultados = false;
+            for (Servicio s : rs) {
+                hayResultados = true;
+                modeloConsultar.addRow(new Object[] {
+                        s.getIdServicio(),
+                        s.getNombreCategoria(),
+                        s.getNombre()
+                });
+            }
+            if (!hayResultados) {
+                if (nombreFiltro.isEmpty() && indiceCategoria <= 0) {
+                    lblMensajeConsulta.setText("No hay servicios registrados.");
+                } else {
+                    lblMensajeConsulta.setText("No se encontraron resultados para su búsqueda.");
                 }
             }
-        } catch (SQLException ex) {
-            MenuPrincipal.mostrarMensaje(
-                    "Problemas con bases de datos. Contactar a soporte.");
         }
     }
 
@@ -658,7 +633,6 @@ public class VentanaServicios extends JFrame {
             cboCategoriaAgregar.setSelectedIndex(0);
         }
         txtNombreAgregar.setText("");
-        txtMontoAgregar.setText("0.00");
     }
 
     /**
@@ -669,8 +643,15 @@ public class VentanaServicios extends JFrame {
             cboCategoriaModificar.setSelectedIndex(0);
         }
         txtNombreModificar.setText("");
-        txtMontoModificar.setText("");
         idServicioSeleccionadoModificar = 0;
         tablaModificar.clearSelection();
+    }
+
+    public void mostrarListado() {
+        // Método para cumplir con el diagrama de clases
+    }
+
+    public void mostrarMensaje(String texto) {
+        JOptionPane.showMessageDialog(this, texto);
     }
 }

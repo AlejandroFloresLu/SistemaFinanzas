@@ -1,7 +1,7 @@
 package modelo;
 
 import datos.UsuarioMD;
-import java.sql.ResultSet;
+import java.util.List;
 
 /**
  * Clase que representa la entidad Usuario del sistema.
@@ -154,6 +154,18 @@ public class Usuario {
     }
 
     /**
+     * Verifica que el email tenga un formato válido.
+     *
+     * @return true si es válido, false en caso contrario
+     */
+    public boolean verificarFormatoEmail() {
+        if (email == null || email.isEmpty()) {
+            return false;
+        }
+        return email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    /**
      * Reinicia todos los atributos del usuario a sus valores por defecto.
      */
     public void limpiarDatos() {
@@ -203,7 +215,7 @@ public class Usuario {
      *
      * @return ResultSet con todos los usuarios activos
      */
-    public ResultSet buscarUsuarios() {
+    public List<Usuario> buscarUsuarios() {
         UsuarioMD usuarioMD = new UsuarioMD();
         return usuarioMD.consultar();
     }
@@ -214,8 +226,21 @@ public class Usuario {
      * @param filtro objeto Usuario con los criterios de búsqueda
      * @return ResultSet con los usuarios que coinciden con el filtro
      */
-    public ResultSet buscarUsuarios(Usuario filtro) {
+    public List<Usuario> buscarUsuarios(Usuario filtro) {
         UsuarioMD usuarioMD = new UsuarioMD();
         return usuarioMD.consultar(filtro);
+    }
+
+    public boolean existeEmail() {
+        datos.UsuarioMD md = new datos.UsuarioMD();
+        return md.existeEmail(this);
+    }
+    public boolean existeEmailExcluyendo() {
+        datos.UsuarioMD md = new datos.UsuarioMD();
+        return md.existeEmailExcluyendo(this);
+    }
+    public boolean verificarMovimientos() {
+        datos.UsuarioMD md = new datos.UsuarioMD();
+        return md.verificarMovimientos(this);
     }
 }

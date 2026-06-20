@@ -28,7 +28,7 @@ public class UsuarioMD {
                 + "VALUES (?, ?, ?, ?, ?)";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
-            ps.setString(1, usuario.getNombre());
+            ps.setString(1, usuario.getEmail());
             ps.setString(2, usuario.getEmail());
             ps.setString(3, usuario.getTelefono());
             ps.setString(4, usuario.getPassword());
@@ -51,7 +51,7 @@ public class UsuarioMD {
                 + "password = ? WHERE id_usuario = ?";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
-            ps.setString(1, usuario.getNombre());
+            ps.setString(1, usuario.getEmail());
             ps.setString(2, usuario.getEmail());
             ps.setString(3, usuario.getTelefono());
             ps.setString(4, usuario.getPassword());
@@ -86,36 +86,57 @@ public class UsuarioMD {
      *
      * @return ResultSet con todos los usuarios activos
      */
-    public ResultSet consultar() {
+    public List<Usuario> consultar() {
+        List<Usuario> lista = new ArrayList<>();
         String sql = "SELECT id_usuario, nombre, email, telefono, password, estado "
                 + "FROM usuario WHERE estado = true ORDER BY id_usuario";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
-            return ps.executeQuery();
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Usuario u = new Usuario();
+                u.setIdUsuario(rs.getInt("id_usuario"));
+                u.setNombre(rs.getString("nombre"));
+                u.setEmail(rs.getString("email"));
+                u.setTelefono(rs.getString("telefono"));
+                u.setPassword(rs.getString("password"));
+                u.setEstado(rs.getBoolean("estado"));
+                lista.add(u);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
-            return null;
         }
+        return lista;
     }
 
     /**
      * Consulta usuarios activos filtrados por nombre.
      *
      * @param filtro objeto Usuario con los criterios de búsqueda
-     * @return ResultSet con los usuarios que coinciden con el filtro
+     * @return List con los usuarios que coinciden con el filtro
      */
-    public ResultSet consultar(Usuario filtro) {
+    public List<Usuario> consultar(Usuario filtro) {
+        List<Usuario> lista = new ArrayList<>();
         String sql = "SELECT id_usuario, nombre, email, telefono, password, estado "
-                + "FROM usuario WHERE estado = true AND nombre LIKE ? "
-                + "ORDER BY id_usuario";
+                + "FROM usuario WHERE estado = true AND nombre LIKE ? ORDER BY id_usuario";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
             ps.setString(1, "%" + filtro.getNombre() + "%");
-            return ps.executeQuery();
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Usuario u = new Usuario();
+                u.setIdUsuario(rs.getInt("id_usuario"));
+                u.setNombre(rs.getString("nombre"));
+                u.setEmail(rs.getString("email"));
+                u.setTelefono(rs.getString("telefono"));
+                u.setPassword(rs.getString("password"));
+                u.setEstado(rs.getBoolean("estado"));
+                lista.add(u);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
-            return null;
         }
+        return lista;
     }
 
     /**
@@ -124,12 +145,12 @@ public class UsuarioMD {
      * @param usuario objeto Usuario con el nombre a verificar
      * @return true si el nombre ya existe, false en caso contrario
      */
-    public boolean existeNombre(Usuario usuario) {
-        String sql = "SELECT COUNT(*) FROM usuario WHERE LOWER(nombre) = LOWER(?) "
+    public boolean existeEmail(Usuario usuario) {
+        String sql = "SELECT COUNT(*) FROM usuario WHERE LOWER(email) = LOWER(?) "
                 + "AND estado = true";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
-            ps.setString(1, usuario.getNombre());
+            ps.setString(1, usuario.getEmail());
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
                 return rs.getInt(1) > 0;
@@ -147,12 +168,12 @@ public class UsuarioMD {
      * @param usuario objeto Usuario con el nombre y idUsuario a verificar
      * @return true si el nombre ya existe en otro registro, false en caso contrario
      */
-    public boolean existeNombreExcluyendo(Usuario usuario) {
-        String sql = "SELECT COUNT(*) FROM usuario WHERE LOWER(nombre) = LOWER(?) "
+    public boolean existeEmailExcluyendo(Usuario usuario) {
+        String sql = "SELECT COUNT(*) FROM usuario WHERE LOWER(email) = LOWER(?) "
                 + "AND id_usuario != ? AND estado = true";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
-            ps.setString(1, usuario.getNombre());
+            ps.setString(1, usuario.getEmail());
             ps.setInt(2, usuario.getIdUsuario());
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {

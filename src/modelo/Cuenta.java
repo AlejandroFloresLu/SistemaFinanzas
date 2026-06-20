@@ -1,7 +1,7 @@
 package modelo;
 
 import datos.CuentaMD;
-import java.sql.ResultSet;
+import java.util.List;
 
 /**
  * Clase que representa la entidad Cuenta del sistema financiero.
@@ -17,7 +17,6 @@ public class Cuenta {
     private int idUsuario = 0;
     private String tipoCuenta = "";
     private String nombre = "";
-    private double saldoInicial = 0.0;
     private boolean estado = true;
 
     /** Tipos de cuenta válidos para el sistema. */
@@ -64,15 +63,6 @@ public class Cuenta {
      */
     public String getNombre() {
         return nombre;
-    }
-
-    /**
-     * Obtiene el saldo inicial de la cuenta.
-     *
-     * @return saldoInicial de la cuenta
-     */
-    public double getSaldoInicial() {
-        return saldoInicial;
     }
 
     /**
@@ -123,15 +113,6 @@ public class Cuenta {
     }
 
     /**
-     * Establece el saldo inicial de la cuenta.
-     *
-     * @param saldoInicial saldo a asignar
-     */
-    public void setSaldoInicial(double saldoInicial) {
-        this.saldoInicial = saldoInicial;
-    }
-
-    /**
      * Establece el estado de la cuenta.
      *
      * @param estado true para activa, false para inactiva
@@ -177,7 +158,6 @@ public class Cuenta {
         idUsuario = 0;
         tipoCuenta = "";
         nombre = "";
-        saldoInicial = 0.0;
         estado = true;
     }
 
@@ -209,5 +189,29 @@ public class Cuenta {
     public boolean borrarDP() {
         CuentaMD cuentaMD = new CuentaMD();
         return cuentaMD.borrar(this);
+    }
+
+    public java.util.List<Cuenta> buscarCuentas() {
+        datos.CuentaMD cuentaMD = new datos.CuentaMD();
+        return cuentaMD.consultar(this.idUsuario);
+    }
+
+    public java.util.List<Cuenta> buscarCuentas(Cuenta filtro) {
+        datos.CuentaMD cuentaMD = new datos.CuentaMD();
+        return cuentaMD.consultar(filtro);
+    }
+
+    public boolean existeNombre() {
+        datos.CuentaMD md = new datos.CuentaMD();
+        return md.existeNombre(this);
+    }
+    public boolean verificarMovimientos() {
+        datos.CuentaMD md = new datos.CuentaMD();
+        return md.verificarMovimientos(this);
+    }
+
+    public boolean existeNombreExcluyendo() {
+        datos.CuentaMD md = new datos.CuentaMD();
+        return md.existeNombreExcluyendo(this);
     }
 }

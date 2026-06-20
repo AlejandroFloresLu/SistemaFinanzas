@@ -1,12 +1,11 @@
 package vista;
 
-import datos.CuentaMD;
 import modelo.Cuenta;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.util.List;
+
 
 /**
  * Ventana de gestión de cuentas del sistema financiero.
@@ -19,22 +18,21 @@ import java.sql.SQLException;
  */
 public class VentanaCuentas extends JFrame {
 
-    private JTabbedPane tabbedPane;
+    private JPanel panelPrincipal;
+    private CardLayout cardLayout;
 
     // ── Pestaña Agregar ──────────────────────────────────────
     private JComboBox<String> cboTipoAgregar;
     private JTextField txtNombreAgregar;
-    private JTextField txtSaldoAgregar;
     private JButton btnGuardarAgregar;
-    private JButton btnLimpiarAgregar;
 
     // ── Pestaña Modificar ────────────────────────────────────
     private JTable tablaModificar;
     private DefaultTableModel modeloModificar;
     private JComboBox<String> cboTipoModificar;
     private JTextField txtNombreModificar;
-    private JTextField txtSaldoModificar;
-    private JButton btnModificar;
+    private JButton btnAbrirFormularioModificar;
+    private JButton btnGuardarModificacion;
     private int idCuentaSeleccionadaModificar = 0;
 
     // ── Pestaña Eliminar ─────────────────────────────────────
@@ -68,15 +66,44 @@ public class VentanaCuentas extends JFrame {
      * Inicializa y organiza todos los componentes gráficos.
      */
     private void initComponentes() {
-        tabbedPane = new JTabbedPane();
-        tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        JPanel panelOpciones = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+        JButton btnNuevo = new JButton("Nueva Cuenta");
+        JButton btnModificarOpcion = new JButton("Modificar Cuenta");
+        JButton btnEliminarOpcion = new JButton("Eliminar Cuenta");
+        JButton btnConsultar = new JButton("Consultar Cuentas");
 
-        tabbedPane.addTab("➕ Agregar", crearPanelAgregar());
-        tabbedPane.addTab("✏️ Modificar", crearPanelModificar());
-        tabbedPane.addTab("🗑️ Eliminar", crearPanelEliminar());
-        tabbedPane.addTab("🔍 Consultar", crearPanelConsultar());
+        panelOpciones.add(btnNuevo);
+        panelOpciones.add(btnModificarOpcion);
+        panelOpciones.add(btnEliminarOpcion);
+        panelOpciones.add(btnConsultar);
 
-        setContentPane(tabbedPane);
+        cardLayout = new CardLayout();
+        panelPrincipal = new JPanel(cardLayout);
+
+        JPanel panelVacio = new JPanel();
+        panelPrincipal.add(panelVacio, "Vacio");
+        panelPrincipal.add(crearPanelAgregar(), "Agregar");
+        panelPrincipal.add(crearPanelModificar(), "Modificar");
+        panelPrincipal.add(crearPanelFormularioModificar(), "FormularioModificar");
+        panelPrincipal.add(crearPanelEliminar(), "Eliminar");
+        panelPrincipal.add(crearPanelConsultar(), "Consultar");
+
+        JPanel panelFondo = new JPanel(new BorderLayout());
+        panelFondo.add(panelOpciones, BorderLayout.NORTH);
+        panelFondo.add(panelPrincipal, BorderLayout.CENTER);
+        setContentPane(panelFondo);
+
+        // Eventos de los botones
+        btnNuevo.addActionListener(e -> cardLayout.show(panelPrincipal, "Agregar"));
+        btnModificarOpcion.addActionListener(e -> {
+            cargarTablaModificar();
+            cardLayout.show(panelPrincipal, "Modificar");
+        });
+        btnEliminarOpcion.addActionListener(e -> {
+            cargarTablaEliminar();
+            cardLayout.show(panelPrincipal, "Eliminar");
+        });
+        btnConsultar.addActionListener(e -> cardLayout.show(panelPrincipal, "Consultar"));
     }
 
     /**
@@ -95,10 +122,14 @@ public class VentanaCuentas extends JFrame {
 
         cboTipoAgregar = new JComboBox<>(Cuenta.TIPOS_CUENTA);
         txtNombreAgregar = new JTextField(20);
-        txtSaldoAgregar = new JTextField(20);
-        txtSaldoAgregar.setText("0.00");
-
-        gbc.gridx = 0;
+        txtNombreAgregar.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                char c = evt.getKeyChar();
+                if (!Character.isLetter(c) && !Character.isWhitespace(c)) {
+                    evt.consume();
+                }
+            }
+        });        gbc.gridx = 0;
         gbc.gridy = 0;
         formulario.add(new JLabel("Tipo de Cuenta:"), gbc);
         gbc.gridx = 1;
@@ -110,27 +141,14 @@ public class VentanaCuentas extends JFrame {
         gbc.gridx = 1;
         formulario.add(txtNombreAgregar, gbc);
 
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        formulario.add(new JLabel("Saldo Inicial:"), gbc);
-        gbc.gridx = 1;
-        formulario.add(txtSaldoAgregar, gbc);
-
         JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
         btnGuardarAgregar = new JButton("💾 Guardar");
         btnGuardarAgregar.setBackground(new Color(46, 204, 113));
         btnGuardarAgregar.setForeground(Color.WHITE);
-        btnGuardarAgregar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnGuardarAgregar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
         btnGuardarAgregar.setFocusPainted(false);
 
-        btnLimpiarAgregar = new JButton("🧹 Limpiar");
-        btnLimpiarAgregar.setBackground(new Color(149, 165, 166));
-        btnLimpiarAgregar.setForeground(Color.WHITE);
-        btnLimpiarAgregar.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btnLimpiarAgregar.setFocusPainted(false);
-
         panelBotones.add(btnGuardarAgregar);
-        panelBotones.add(btnLimpiarAgregar);
 
         panel.add(formulario, BorderLayout.CENTER);
         panel.add(panelBotones, BorderLayout.SOUTH);
@@ -147,7 +165,7 @@ public class VentanaCuentas extends JFrame {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         modeloModificar = new DefaultTableModel(
-                new String[] { "ID", "Tipo", "Nombre", "Saldo Inicial" }, 0) {
+                new String[] { "ID", "Tipo", "Nombre" }, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -155,7 +173,29 @@ public class VentanaCuentas extends JFrame {
         };
         tablaModificar = new JTable(modeloModificar);
         JScrollPane scrollModificar = new JScrollPane(tablaModificar);
-        scrollModificar.setPreferredSize(new Dimension(800, 200));
+
+        btnAbrirFormularioModificar = new JButton("✏️ Modificar");
+        btnAbrirFormularioModificar.setBackground(new Color(52, 152, 219));
+        btnAbrirFormularioModificar.setForeground(Color.WHITE);
+        btnAbrirFormularioModificar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
+        btnAbrirFormularioModificar.setFocusPainted(false);
+
+        JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        panelBoton.add(btnAbrirFormularioModificar);
+
+        panel.add(scrollModificar, BorderLayout.CENTER);
+        panel.add(panelBoton, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    /**
+     * Crea el panel del formulario para modificar.
+     *
+     * @return JPanel con el formulario
+     */
+    private JPanel crearPanelFormularioModificar() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JPanel formulario = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
@@ -164,7 +204,14 @@ public class VentanaCuentas extends JFrame {
 
         cboTipoModificar = new JComboBox<>(Cuenta.TIPOS_CUENTA);
         txtNombreModificar = new JTextField(20);
-        txtSaldoModificar = new JTextField(20);
+        txtNombreModificar.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                char c = evt.getKeyChar();
+                if (!Character.isLetter(c) && !Character.isWhitespace(c)) {
+                    evt.consume();
+                }
+            }
+        });
 
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -178,26 +225,17 @@ public class VentanaCuentas extends JFrame {
         gbc.gridx = 1;
         formulario.add(txtNombreModificar, gbc);
 
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        formulario.add(new JLabel("Saldo Inicial:"), gbc);
-        gbc.gridx = 1;
-        formulario.add(txtSaldoModificar, gbc);
+        btnGuardarModificacion = new JButton("💾 Guardar");
+        btnGuardarModificacion.setBackground(new Color(46, 204, 113));
+        btnGuardarModificacion.setForeground(Color.WHITE);
+        btnGuardarModificacion.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
+        btnGuardarModificacion.setFocusPainted(false);
 
-        btnModificar = new JButton("✏️ Modificar");
-        btnModificar.setBackground(new Color(52, 152, 219));
-        btnModificar.setForeground(Color.WHITE);
-        btnModificar.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btnModificar.setFocusPainted(false);
-
-        JPanel panelInferior = new JPanel(new BorderLayout(10, 10));
-        panelInferior.add(formulario, BorderLayout.CENTER);
         JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        panelBoton.add(btnModificar);
-        panelInferior.add(panelBoton, BorderLayout.SOUTH);
+        panelBoton.add(btnGuardarModificacion);
 
-        panel.add(scrollModificar, BorderLayout.NORTH);
-        panel.add(panelInferior, BorderLayout.CENTER);
+        panel.add(formulario, BorderLayout.CENTER);
+        panel.add(panelBoton, BorderLayout.SOUTH);
         return panel;
     }
 
@@ -211,7 +249,7 @@ public class VentanaCuentas extends JFrame {
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         modeloEliminar = new DefaultTableModel(
-                new String[] { "ID", "Tipo", "Nombre", "Saldo Inicial" }, 0) {
+                new String[] { "ID", "Tipo", "Nombre" }, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -223,7 +261,7 @@ public class VentanaCuentas extends JFrame {
         btnEliminar = new JButton("🗑️ Eliminar");
         btnEliminar.setBackground(new Color(231, 76, 60));
         btnEliminar.setForeground(Color.WHITE);
-        btnEliminar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnEliminar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
         btnEliminar.setFocusPainted(false);
 
         JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.CENTER));
@@ -259,12 +297,12 @@ public class VentanaCuentas extends JFrame {
         btnBuscarConsultar = new JButton("🔍 Buscar");
         btnBuscarConsultar.setBackground(new Color(52, 152, 219));
         btnBuscarConsultar.setForeground(Color.WHITE);
-        btnBuscarConsultar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnBuscarConsultar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
         btnBuscarConsultar.setFocusPainted(false);
         panelFiltros.add(btnBuscarConsultar);
 
         modeloConsultar = new DefaultTableModel(
-                new String[] { "ID", "Tipo", "Nombre", "Saldo Inicial" }, 0) {
+                new String[] { "ID", "Tipo", "Nombre" }, 0) {
             @Override
             public boolean isCellEditable(int row, int col) {
                 return false;
@@ -293,119 +331,77 @@ public class VentanaCuentas extends JFrame {
             cuenta.setIdUsuario(MenuPrincipal.ID_USUARIO_ACTIVO);
             cuenta.setTipoCuenta(
                     (String) cboTipoAgregar.getSelectedItem());
-            cuenta.setNombre(txtNombreAgregar.getText());
-
-            try {
-                cuenta.setSaldoInicial(
-                        Double.parseDouble(txtSaldoAgregar.getText().trim()));
-            } catch (NumberFormatException ex) {
-                MenuPrincipal.mostrarMensaje(
-                        "El saldo inicial debe ser un número válido.");
-                return;
-            }
+            cuenta.setNombre(txtNombreAgregar.getText().trim().toLowerCase());
 
             if (!cuenta.verificarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Complete todos los campos obligatorios.");
                 return;
             }
 
-            CuentaMD cuentaMD = new CuentaMD();
-            if (cuentaMD.existeNombre(cuenta)) {
-                MenuPrincipal.mostrarMensaje(
+            if (cuenta.existeNombre()) {
+                this.mostrarMensaje(
                         "Ya existe una cuenta con ese nombre. "
                                 + "Ingrese otro nombre.");
                 return;
             }
 
             if (cuenta.grabarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Cuenta registrada exitosamente.");
                 cuenta.limpiarDatos();
                 limpiarFormularioAgregar();
             } else {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Problemas con bases de datos. "
                                 + "Contactar a soporte.");
             }
         });
 
-        btnLimpiarAgregar.addActionListener(e -> {
-            limpiarFormularioAgregar();
-        });
-
-        // ── Pestaña Modificar ────────────────────────────────
-        tabbedPane.addChangeListener(e -> {
-            int indice = tabbedPane.getSelectedIndex();
-            if (indice == 1) {
-                cargarTablaModificar();
-            } else if (indice == 2) {
-                cargarTablaEliminar();
-            }
-        });
-
-        tablaModificar.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                int fila = tablaModificar.getSelectedRow();
-                if (fila >= 0) {
-                    idCuentaSeleccionadaModificar = Integer.parseInt(
-                            modeloModificar.getValueAt(fila, 0).toString());
-                    String tipo = modeloModificar.getValueAt(
-                            fila, 1).toString();
-                    cboTipoModificar.setSelectedItem(tipo);
-                    txtNombreModificar.setText(
-                            modeloModificar.getValueAt(fila, 2).toString());
-                    txtSaldoModificar.setText(
-                            modeloModificar.getValueAt(fila, 3).toString());
-                }
-            }
-        });
-
-        btnModificar.addActionListener(e -> {
-            if (idCuentaSeleccionadaModificar == 0) {
-                MenuPrincipal.mostrarMensaje(
-                        "Seleccione una cuenta de la tabla.");
+        btnAbrirFormularioModificar.addActionListener(e -> {
+            int fila = tablaModificar.getSelectedRow();
+            if (fila < 0) {
+                this.mostrarMensaje("Seleccione una cuenta de la tabla.");
                 return;
             }
+            idCuentaSeleccionadaModificar = Integer.parseInt(
+                    modeloModificar.getValueAt(fila, 0).toString());
+            cboTipoModificar.setSelectedItem(
+                    modeloModificar.getValueAt(fila, 1).toString());
+            txtNombreModificar.setText(
+                    modeloModificar.getValueAt(fila, 2).toString());
+            
+            cardLayout.show(panelPrincipal, "FormularioModificar");
+        });
 
+        btnGuardarModificacion.addActionListener(e -> {
             Cuenta cuenta = new Cuenta();
             cuenta.setIdCuenta(idCuentaSeleccionadaModificar);
             cuenta.setIdUsuario(MenuPrincipal.ID_USUARIO_ACTIVO);
-            cuenta.setTipoCuenta(
-                    (String) cboTipoModificar.getSelectedItem());
+            cuenta.setTipoCuenta(cboTipoModificar.getSelectedItem().toString());
             cuenta.setNombre(txtNombreModificar.getText());
 
-            try {
-                cuenta.setSaldoInicial(
-                        Double.parseDouble(
-                                txtSaldoModificar.getText().trim()));
-            } catch (NumberFormatException ex) {
-                MenuPrincipal.mostrarMensaje(
-                        "El saldo inicial debe ser un número válido.");
-                return;
-            }
-
             if (!cuenta.verificarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Complete todos los campos obligatorios.");
                 return;
             }
 
-            CuentaMD cuentaMD = new CuentaMD();
-            if (cuentaMD.existeNombreExcluyendo(cuenta)) {
-                MenuPrincipal.mostrarMensaje(
-                        "Ya existe otra cuenta con ese nombre. "
+            if (cuenta.existeNombreExcluyendo()) {
+                this.mostrarMensaje(
+                        "Ya existe otra cuenta con ese nombre para su usuario. "
                                 + "Ingrese un nombre diferente.");
                 return;
             }
 
             if (cuenta.modificarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Cuenta modificada exitosamente.");
                 cargarTablaModificar();
                 limpiarFormularioModificar();
+                cardLayout.show(panelPrincipal, "Modificar");
             } else {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Problemas con bases de datos. "
                                 + "Contactar a soporte.");
             }
@@ -424,7 +420,7 @@ public class VentanaCuentas extends JFrame {
 
         btnEliminar.addActionListener(e -> {
             if (idCuentaSeleccionadaEliminar == 0) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Seleccione una cuenta de la tabla.");
                 return;
             }
@@ -442,21 +438,20 @@ public class VentanaCuentas extends JFrame {
             Cuenta cuenta = new Cuenta();
             cuenta.setIdCuenta(idCuentaSeleccionadaEliminar);
 
-            CuentaMD cuentaMD = new CuentaMD();
-            if (cuentaMD.verificarMovimientos(cuenta)) {
-                MenuPrincipal.mostrarMensaje(
+            if (cuenta.verificarMovimientos()) {
+                this.mostrarMensaje(
                         "No se puede eliminar la cuenta porque "
                                 + "tiene movimientos asociados.");
                 return;
             }
 
             if (cuenta.borrarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Cuenta eliminada exitosamente.");
                 cargarTablaEliminar();
                 idCuentaSeleccionadaEliminar = 0;
             } else {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Problemas con bases de datos. "
                                 + "Contactar a soporte.");
             }
@@ -473,22 +468,17 @@ public class VentanaCuentas extends JFrame {
      */
     private void cargarTablaModificar() {
         modeloModificar.setRowCount(0);
-        CuentaMD cuentaMD = new CuentaMD();
-        ResultSet rs = cuentaMD.consultar(MenuPrincipal.ID_USUARIO_ACTIVO);
-        try {
-            if (rs != null) {
-                while (rs.next()) {
-                    modeloModificar.addRow(new Object[] {
-                            rs.getInt("id_cuenta"),
-                            rs.getString("tipo_cuenta"),
-                            rs.getString("nombre"),
-                            rs.getDouble("saldo_inicial")
-                    });
-                }
+        Cuenta cuenta = new Cuenta();
+        cuenta.setIdUsuario(MenuPrincipal.ID_USUARIO_ACTIVO);
+        List<Cuenta> lista = cuenta.buscarCuentas();
+        if (lista != null) {
+            for (Cuenta c : lista) {
+                modeloModificar.addRow(new Object[] {
+                        c.getIdCuenta(),
+                        c.getTipoCuenta(),
+                        c.getNombre()
+                });
             }
-        } catch (SQLException ex) {
-            MenuPrincipal.mostrarMensaje(
-                    "Problemas con bases de datos. Contactar a soporte.");
         }
     }
 
@@ -497,22 +487,17 @@ public class VentanaCuentas extends JFrame {
      */
     private void cargarTablaEliminar() {
         modeloEliminar.setRowCount(0);
-        CuentaMD cuentaMD = new CuentaMD();
-        ResultSet rs = cuentaMD.consultar(MenuPrincipal.ID_USUARIO_ACTIVO);
-        try {
-            if (rs != null) {
-                while (rs.next()) {
-                    modeloEliminar.addRow(new Object[] {
-                            rs.getInt("id_cuenta"),
-                            rs.getString("tipo_cuenta"),
-                            rs.getString("nombre"),
-                            rs.getDouble("saldo_inicial")
-                    });
-                }
+        Cuenta cuenta = new Cuenta();
+        cuenta.setIdUsuario(MenuPrincipal.ID_USUARIO_ACTIVO);
+        List<Cuenta> lista = cuenta.buscarCuentas();
+        if (lista != null) {
+            for (Cuenta c : lista) {
+                modeloEliminar.addRow(new Object[] {
+                        c.getIdCuenta(),
+                        c.getTipoCuenta(),
+                        c.getNombre()
+                });
             }
-        } catch (SQLException ex) {
-            MenuPrincipal.mostrarMensaje(
-                    "Problemas con bases de datos. Contactar a soporte.");
         }
     }
 
@@ -523,52 +508,37 @@ public class VentanaCuentas extends JFrame {
     private void buscarCuentas() {
         modeloConsultar.setRowCount(0);
         lblMensajeConsulta.setText(" ");
-
-        Cuenta filtro = new Cuenta();
-        filtro.setIdUsuario(MenuPrincipal.ID_USUARIO_ACTIVO);
-
-        String tipoSeleccionado = (String) cboTipoConsultar.getSelectedItem();
-        if (tipoSeleccionado != null
-                && !tipoSeleccionado.equals("-- Todos --")) {
-            filtro.setTipoCuenta(tipoSeleccionado);
-        }
+        Cuenta cuenta = new Cuenta();
+        List<Cuenta> rs;
 
         String nombreFiltro = txtNombreConsultar.getText().trim();
-        if (!nombreFiltro.isEmpty()) {
+        if (nombreFiltro.isEmpty()) {
+            cuenta.setIdUsuario(MenuPrincipal.ID_USUARIO_ACTIVO);
+            rs = cuenta.buscarCuentas();
+        } else {
+            Cuenta filtro = new Cuenta();
+            filtro.setIdUsuario(MenuPrincipal.ID_USUARIO_ACTIVO);
             filtro.setNombre(nombreFiltro);
+            rs = cuenta.buscarCuentas(filtro);
         }
 
-        CuentaMD cuentaMD = new CuentaMD();
-        ResultSet rs = cuentaMD.consultar(filtro);
-
-        try {
-            if (rs != null) {
-                boolean hayResultados = false;
-                while (rs.next()) {
-                    hayResultados = true;
-                    modeloConsultar.addRow(new Object[] {
-                            rs.getInt("id_cuenta"),
-                            rs.getString("tipo_cuenta"),
-                            rs.getString("nombre"),
-                            rs.getDouble("saldo_inicial")
-                    });
-                }
-                if (!hayResultados) {
-                    if (nombreFiltro.isEmpty()
-                            && (tipoSeleccionado == null
-                                    || tipoSeleccionado.equals("-- Todos --"))) {
-                        lblMensajeConsulta.setText(
-                                "No hay cuentas registradas.");
-                    } else {
-                        lblMensajeConsulta.setText(
-                                "No se encontraron resultados "
-                                        + "para su búsqueda.");
-                    }
+        if (rs != null) {
+            boolean hayResultados = false;
+            for (Cuenta c : rs) {
+                hayResultados = true;
+                modeloConsultar.addRow(new Object[] {
+                        c.getIdCuenta(),
+                        c.getTipoCuenta(),
+                        c.getNombre()
+                });
+            }
+            if (!hayResultados) {
+                if (nombreFiltro.isEmpty()) {
+                    lblMensajeConsulta.setText("No hay cuentas registradas.");
+                } else {
+                    lblMensajeConsulta.setText("No se encontraron resultados para su búsqueda.");
                 }
             }
-        } catch (SQLException ex) {
-            MenuPrincipal.mostrarMensaje(
-                    "Problemas con bases de datos. Contactar a soporte.");
         }
     }
 
@@ -578,7 +548,6 @@ public class VentanaCuentas extends JFrame {
     private void limpiarFormularioAgregar() {
         cboTipoAgregar.setSelectedIndex(0);
         txtNombreAgregar.setText("");
-        txtSaldoAgregar.setText("0.00");
     }
 
     /**
@@ -587,8 +556,15 @@ public class VentanaCuentas extends JFrame {
     private void limpiarFormularioModificar() {
         cboTipoModificar.setSelectedIndex(0);
         txtNombreModificar.setText("");
-        txtSaldoModificar.setText("");
         idCuentaSeleccionadaModificar = 0;
         tablaModificar.clearSelection();
+    }
+
+    public void mostrarListado() {
+        // Método para cumplir con el diagrama de clases
+    }
+
+    public void mostrarMensaje(String texto) {
+        JOptionPane.showMessageDialog(this, texto);
     }
 }

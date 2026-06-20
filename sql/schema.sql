@@ -19,7 +19,6 @@ CREATE TABLE IF NOT EXISTS cuenta (
     id_usuario   INT           NOT NULL,
     tipo_cuenta  VARCHAR(50)   NOT NULL,
     nombre       VARCHAR(100)  NOT NULL,
-    saldo_inicial DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     estado       BOOLEAN       NOT NULL DEFAULT TRUE,
     CONSTRAINT fk_cuenta_usuario
         FOREIGN KEY (id_usuario) REFERENCES usuario(id_usuario)
@@ -29,7 +28,6 @@ CREATE TABLE IF NOT EXISTS cuenta (
 CREATE TABLE IF NOT EXISTS categoria (
     id_categoria SERIAL       PRIMARY KEY,
     nombre       VARCHAR(100) NOT NULL,
-    descripcion  TEXT,
     estado       BOOLEAN      NOT NULL DEFAULT TRUE
 );
 
@@ -38,7 +36,6 @@ CREATE TABLE IF NOT EXISTS servicio (
     id_servicio    SERIAL        PRIMARY KEY,
     id_categoria   INT           NOT NULL,
     nombre         VARCHAR(100)  NOT NULL,
-    monto_estimado DECIMAL(12,2) NOT NULL DEFAULT 0.00,
     estado         BOOLEAN       NOT NULL DEFAULT TRUE,
     CONSTRAINT fk_servicio_categoria
         FOREIGN KEY (id_categoria) REFERENCES categoria(id_categoria)

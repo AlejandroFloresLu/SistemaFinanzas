@@ -1,7 +1,7 @@
 package modelo;
 
 import datos.ServiciosMD;
-import java.sql.ResultSet;
+import java.util.List;
 
 /**
  * Clase que representa la entidad Servicio del sistema.
@@ -16,8 +16,11 @@ public class Servicio {
     private int idServicio = 0;
     private int idCategoria = 0;
     private String nombre = "";
-    private double montoEstimado = 0.0;
     private boolean estado = true;
+    private String nombreCategoria = "";
+
+    public String getNombreCategoria() { return nombreCategoria; }
+    public void setNombreCategoria(String nc) { this.nombreCategoria = nc; }
 
     // ── Getters ──────────────────────────────────────────────
 
@@ -46,15 +49,6 @@ public class Servicio {
      */
     public String getNombre() {
         return nombre;
-    }
-
-    /**
-     * Obtiene el monto estimado del servicio.
-     *
-     * @return montoEstimado del servicio
-     */
-    public double getMontoEstimado() {
-        return montoEstimado;
     }
 
     /**
@@ -96,15 +90,6 @@ public class Servicio {
     }
 
     /**
-     * Establece el monto estimado del servicio.
-     *
-     * @param montoEstimado monto a asignar
-     */
-    public void setMontoEstimado(double montoEstimado) {
-        this.montoEstimado = montoEstimado;
-    }
-
-    /**
      * Establece el estado del servicio.
      *
      * @param estado true para activo, false para inactivo
@@ -138,7 +123,6 @@ public class Servicio {
         idServicio = 0;
         idCategoria = 0;
         nombre = "";
-        montoEstimado = 0.0;
         estado = true;
     }
 
@@ -178,7 +162,7 @@ public class Servicio {
      *
      * @return ResultSet con todos los servicios activos
      */
-    public ResultSet buscarServicios() {
+    public List<Servicio> buscarServicios() {
         ServiciosMD serviciosMD = new ServiciosMD();
         return serviciosMD.consultar();
     }
@@ -189,7 +173,7 @@ public class Servicio {
      * @param filtro objeto Servicio con los criterios de búsqueda
      * @return ResultSet con los servicios que coinciden con el filtro
      */
-    public ResultSet buscarServicios(Servicio filtro) {
+    public List<Servicio> buscarServicios(Servicio filtro) {
         ServiciosMD serviciosMD = new ServiciosMD();
         return serviciosMD.consultar(filtro);
     }
@@ -204,5 +188,14 @@ public class Servicio {
     public boolean verificarMovimientos(Servicio servicio) {
         ServiciosMD serviciosMD = new ServiciosMD();
         return serviciosMD.verificarMovimientos(servicio);
+    }
+
+    public boolean existeNombre() {
+        datos.ServiciosMD md = new datos.ServiciosMD();
+        return md.existeNombre(this);
+    }
+    public boolean existeNombreExcluyendo() {
+        datos.ServiciosMD md = new datos.ServiciosMD();
+        return md.existeNombreExcluyendo(this);
     }
 }

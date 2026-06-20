@@ -1,12 +1,11 @@
 package vista;
 
-import datos.UsuarioMD;
 import modelo.Usuario;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.util.List;
+
 
 /**
  * Ventana de gestión de usuarios del sistema.
@@ -18,7 +17,8 @@ import java.sql.SQLException;
  */
 public class VentanaUsuarios extends JFrame {
 
-    private JTabbedPane tabbedPane;
+    private JPanel panelPrincipal;
+    private CardLayout cardLayout;
 
     // ── Pestaña Agregar ──────────────────────────────────────
     private JTextField txtNombreAgregar;
@@ -26,7 +26,6 @@ public class VentanaUsuarios extends JFrame {
     private JTextField txtTelefonoAgregar;
     private JTextField txtPasswordAgregar;
     private JButton btnGuardarAgregar;
-    private JButton btnLimpiarAgregar;
 
     // ── Pestaña Modificar ────────────────────────────────────
     private JTable tablaModificar;
@@ -35,7 +34,8 @@ public class VentanaUsuarios extends JFrame {
     private JTextField txtEmailModificar;
     private JTextField txtTelefonoModificar;
     private JTextField txtPasswordModificar;
-    private JButton btnModificar;
+    private JButton btnAbrirFormularioModificar;
+    private JButton btnGuardarModificacion;
     private int idUsuarioSeleccionadoModificar = 0;
 
     // ── Pestaña Eliminar ─────────────────────────────────────
@@ -68,15 +68,44 @@ public class VentanaUsuarios extends JFrame {
      * Inicializa y organiza todos los componentes gráficos.
      */
     private void initComponentes() {
-        tabbedPane = new JTabbedPane();
-        tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        JPanel panelOpciones = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+        JButton btnNuevo = new JButton("Nuevo Usuario");
+        JButton btnModificarOpcion = new JButton("Modificar Usuario");
+        JButton btnEliminarOpcion = new JButton("Eliminar Usuario");
+        JButton btnConsultar = new JButton("Consultar Usuarios");
 
-        tabbedPane.addTab("➕ Agregar", crearPanelAgregar());
-        tabbedPane.addTab("✏️ Modificar", crearPanelModificar());
-        tabbedPane.addTab("🗑️ Eliminar", crearPanelEliminar());
-        tabbedPane.addTab("🔍 Consultar", crearPanelConsultar());
+        panelOpciones.add(btnNuevo);
+        panelOpciones.add(btnModificarOpcion);
+        panelOpciones.add(btnEliminarOpcion);
+        panelOpciones.add(btnConsultar);
 
-        setContentPane(tabbedPane);
+        cardLayout = new CardLayout();
+        panelPrincipal = new JPanel(cardLayout);
+
+        JPanel panelVacio = new JPanel();
+        panelPrincipal.add(panelVacio, "Vacio");
+        panelPrincipal.add(crearPanelAgregar(), "Agregar");
+        panelPrincipal.add(crearPanelModificar(), "Modificar");
+        panelPrincipal.add(crearPanelFormularioModificar(), "FormularioModificar");
+        panelPrincipal.add(crearPanelEliminar(), "Eliminar");
+        panelPrincipal.add(crearPanelConsultar(), "Consultar");
+
+        JPanel panelFondo = new JPanel(new BorderLayout());
+        panelFondo.add(panelOpciones, BorderLayout.NORTH);
+        panelFondo.add(panelPrincipal, BorderLayout.CENTER);
+        setContentPane(panelFondo);
+
+        // Eventos de los botones
+        btnNuevo.addActionListener(e -> cardLayout.show(panelPrincipal, "Agregar"));
+        btnModificarOpcion.addActionListener(e -> {
+            cargarTablaModificar();
+            cardLayout.show(panelPrincipal, "Modificar");
+        });
+        btnEliminarOpcion.addActionListener(e -> {
+            cargarTablaEliminar();
+            cardLayout.show(panelPrincipal, "Eliminar");
+        });
+        btnConsultar.addActionListener(e -> cardLayout.show(panelPrincipal, "Consultar"));
     }
 
     /**
@@ -94,8 +123,41 @@ public class VentanaUsuarios extends JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         txtNombreAgregar = new JTextField(20);
+        txtNombreAgregar.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                char c = evt.getKeyChar();
+                if (!Character.isLetter(c) && !Character.isWhitespace(c)) {
+                    evt.consume();
+                }
+                if (txtNombreAgregar.getText().length() >= 100) {
+                    evt.consume();
+                }
+            }
+        });
         txtEmailAgregar = new JTextField(20);
+        txtEmailAgregar.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                char c = evt.getKeyChar();
+                if (txtEmailAgregar.getText().length() >= 100) {
+                    evt.consume();
+                }
+                if (c == '@' && txtEmailAgregar.getText().contains("@")) {
+                    evt.consume();
+                }
+            }
+        });
         txtTelefonoAgregar = new JTextField(20);
+        txtTelefonoAgregar.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                char c = evt.getKeyChar();
+                if (!Character.isDigit(c)) {
+                    evt.consume();
+                }
+                if (txtTelefonoAgregar.getText().length() >= 10) {
+                    evt.consume();
+                }
+            }
+        });
         txtPasswordAgregar = new JTextField(20);
 
         gbc.gridx = 0;
@@ -126,17 +188,10 @@ public class VentanaUsuarios extends JFrame {
         btnGuardarAgregar = new JButton("💾 Guardar");
         btnGuardarAgregar.setBackground(new Color(46, 204, 113));
         btnGuardarAgregar.setForeground(Color.WHITE);
-        btnGuardarAgregar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnGuardarAgregar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
         btnGuardarAgregar.setFocusPainted(false);
 
-        btnLimpiarAgregar = new JButton("🧹 Limpiar");
-        btnLimpiarAgregar.setBackground(new Color(149, 165, 166));
-        btnLimpiarAgregar.setForeground(Color.WHITE);
-        btnLimpiarAgregar.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btnLimpiarAgregar.setFocusPainted(false);
-
         panelBotones.add(btnGuardarAgregar);
-        panelBotones.add(btnLimpiarAgregar);
 
         panel.add(formulario, BorderLayout.CENTER);
         panel.add(panelBotones, BorderLayout.SOUTH);
@@ -161,7 +216,29 @@ public class VentanaUsuarios extends JFrame {
         };
         tablaModificar = new JTable(modeloModificar);
         JScrollPane scrollModificar = new JScrollPane(tablaModificar);
-        scrollModificar.setPreferredSize(new Dimension(750, 200));
+
+        btnAbrirFormularioModificar = new JButton("✏️ Modificar");
+        btnAbrirFormularioModificar.setBackground(new Color(52, 152, 219));
+        btnAbrirFormularioModificar.setForeground(Color.WHITE);
+        btnAbrirFormularioModificar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
+        btnAbrirFormularioModificar.setFocusPainted(false);
+
+        JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        panelBoton.add(btnAbrirFormularioModificar);
+
+        panel.add(scrollModificar, BorderLayout.CENTER);
+        panel.add(panelBoton, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    /**
+     * Crea el panel del formulario para modificar.
+     *
+     * @return JPanel con el formulario
+     */
+    private JPanel crearPanelFormularioModificar() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JPanel formulario = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
@@ -169,8 +246,41 @@ public class VentanaUsuarios extends JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         txtNombreModificar = new JTextField(20);
+        txtNombreModificar.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                char c = evt.getKeyChar();
+                if (!Character.isLetter(c) && !Character.isWhitespace(c)) {
+                    evt.consume();
+                }
+                if (txtNombreModificar.getText().length() >= 100) {
+                    evt.consume();
+                }
+            }
+        });
         txtEmailModificar = new JTextField(20);
+        txtEmailModificar.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                char c = evt.getKeyChar();
+                if (txtEmailModificar.getText().length() >= 100) {
+                    evt.consume();
+                }
+                if (c == '@' && txtEmailModificar.getText().contains("@")) {
+                    evt.consume();
+                }
+            }
+        });
         txtTelefonoModificar = new JTextField(20);
+        txtTelefonoModificar.addKeyListener(new java.awt.event.KeyAdapter() {
+            public void keyTyped(java.awt.event.KeyEvent evt) {
+                char c = evt.getKeyChar();
+                if (!Character.isDigit(c)) {
+                    evt.consume();
+                }
+                if (txtTelefonoModificar.getText().length() >= 10) {
+                    evt.consume();
+                }
+            }
+        });
         txtPasswordModificar = new JTextField(20);
 
         gbc.gridx = 0;
@@ -197,20 +307,17 @@ public class VentanaUsuarios extends JFrame {
         gbc.gridx = 1;
         formulario.add(txtPasswordModificar, gbc);
 
-        btnModificar = new JButton("✏️ Modificar");
-        btnModificar.setBackground(new Color(52, 152, 219));
-        btnModificar.setForeground(Color.WHITE);
-        btnModificar.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        btnModificar.setFocusPainted(false);
+        btnGuardarModificacion = new JButton("💾 Guardar");
+        btnGuardarModificacion.setBackground(new Color(46, 204, 113));
+        btnGuardarModificacion.setForeground(Color.WHITE);
+        btnGuardarModificacion.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
+        btnGuardarModificacion.setFocusPainted(false);
 
-        JPanel panelInferior = new JPanel(new BorderLayout(10, 10));
-        panelInferior.add(formulario, BorderLayout.CENTER);
         JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        panelBoton.add(btnModificar);
-        panelInferior.add(panelBoton, BorderLayout.SOUTH);
+        panelBoton.add(btnGuardarModificacion);
 
-        panel.add(scrollModificar, BorderLayout.NORTH);
-        panel.add(panelInferior, BorderLayout.CENTER);
+        panel.add(formulario, BorderLayout.CENTER);
+        panel.add(panelBoton, BorderLayout.SOUTH);
         return panel;
     }
 
@@ -236,7 +343,7 @@ public class VentanaUsuarios extends JFrame {
         btnEliminar = new JButton("🗑️ Eliminar");
         btnEliminar.setBackground(new Color(231, 76, 60));
         btnEliminar.setForeground(Color.WHITE);
-        btnEliminar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnEliminar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
         btnEliminar.setFocusPainted(false);
 
         JPanel panelBoton = new JPanel(new FlowLayout(FlowLayout.CENTER));
@@ -264,7 +371,7 @@ public class VentanaUsuarios extends JFrame {
         btnBuscarConsultar = new JButton("🔍 Buscar");
         btnBuscarConsultar.setBackground(new Color(52, 152, 219));
         btnBuscarConsultar.setForeground(Color.WHITE);
-        btnBuscarConsultar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        btnBuscarConsultar.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
         btnBuscarConsultar.setFocusPainted(false);
         panelFiltros.add(btnBuscarConsultar);
 
@@ -295,104 +402,97 @@ public class VentanaUsuarios extends JFrame {
         // ── Pestaña Agregar ──────────────────────────────────
         btnGuardarAgregar.addActionListener(e -> {
             Usuario usuario = new Usuario();
-            usuario.setNombre(txtNombreAgregar.getText());
-            usuario.setEmail(txtEmailAgregar.getText());
+            usuario.setNombre(txtNombreAgregar.getText().trim());
+            usuario.setEmail(txtEmailAgregar.getText().trim().toLowerCase());
             usuario.setTelefono(txtTelefonoAgregar.getText());
             usuario.setPassword(txtPasswordAgregar.getText());
 
             if (!usuario.verificarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Complete todos los campos obligatorios "
                                 + "(nombre, email, teléfono).");
                 return;
             }
 
-            UsuarioMD usuarioMD = new UsuarioMD();
-            if (usuarioMD.existeNombre(usuario)) {
-                MenuPrincipal.mostrarMensaje(
+            if (!usuario.verificarFormatoEmail()) {
+                this.mostrarMensaje(
+                        "El email ingresado no tiene un formato válido.");
+                return;
+            }
+
+            if (usuario.existeEmail()) {
+                this.mostrarMensaje(
                         "Ya existe un usuario con ese nombre. "
                                 + "Ingrese otro nombre.");
                 return;
             }
 
             if (usuario.grabarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Usuario registrado exitosamente.");
                 usuario.limpiarDatos();
                 limpiarFormularioAgregar();
             } else {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Problemas con bases de datos. "
                                 + "Contactar a soporte.");
             }
         });
 
-        btnLimpiarAgregar.addActionListener(e -> {
-            limpiarFormularioAgregar();
-        });
-
-        // ── Pestaña Modificar ────────────────────────────────
-        tabbedPane.addChangeListener(e -> {
-            int indice = tabbedPane.getSelectedIndex();
-            if (indice == 1) {
-                cargarTablaModificar();
-            } else if (indice == 2) {
-                cargarTablaEliminar();
-            }
-        });
-
-        tablaModificar.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                int fila = tablaModificar.getSelectedRow();
-                if (fila >= 0) {
-                    idUsuarioSeleccionadoModificar = Integer.parseInt(
-                            modeloModificar.getValueAt(fila, 0).toString());
-                    txtNombreModificar.setText(
-                            modeloModificar.getValueAt(fila, 1).toString());
-                    txtEmailModificar.setText(
-                            modeloModificar.getValueAt(fila, 2).toString());
-                    txtTelefonoModificar.setText(
-                            modeloModificar.getValueAt(fila, 3).toString());
-                    txtPasswordModificar.setText("");
-                }
-            }
-        });
-
-        btnModificar.addActionListener(e -> {
-            if (idUsuarioSeleccionadoModificar == 0) {
-                MenuPrincipal.mostrarMensaje(
-                        "Seleccione un usuario de la tabla.");
+        btnAbrirFormularioModificar.addActionListener(e -> {
+            int fila = tablaModificar.getSelectedRow();
+            if (fila < 0) {
+                this.mostrarMensaje("Seleccione un usuario de la tabla.");
                 return;
             }
+            idUsuarioSeleccionadoModificar = Integer.parseInt(
+                    modeloModificar.getValueAt(fila, 0).toString());
+            txtNombreModificar.setText(
+                    modeloModificar.getValueAt(fila, 1).toString());
+            txtEmailModificar.setText(
+                    modeloModificar.getValueAt(fila, 2).toString());
+            txtTelefonoModificar.setText(
+                    modeloModificar.getValueAt(fila, 3).toString());
+            txtPasswordModificar.setText("");
+            
+            cardLayout.show(panelPrincipal, "FormularioModificar");
+        });
 
+        btnGuardarModificacion.addActionListener(e -> {
             Usuario usuario = new Usuario();
             usuario.setIdUsuario(idUsuarioSeleccionadoModificar);
-            usuario.setNombre(txtNombreModificar.getText());
-            usuario.setEmail(txtEmailModificar.getText());
+            usuario.setNombre(txtNombreModificar.getText().trim());
+            usuario.setEmail(txtEmailModificar.getText().trim().toLowerCase());
             usuario.setTelefono(txtTelefonoModificar.getText());
             usuario.setPassword(txtPasswordModificar.getText());
 
             if (!usuario.verificarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Complete todos los campos obligatorios.");
                 return;
             }
 
-            UsuarioMD usuarioMD = new UsuarioMD();
-            if (usuarioMD.existeNombreExcluyendo(usuario)) {
-                MenuPrincipal.mostrarMensaje(
-                        "Ya existe otro usuario con ese nombre. "
+            if (!usuario.verificarFormatoEmail()) {
+                this.mostrarMensaje(
+                        "El email ingresado no tiene un formato válido.");
+                return;
+            }
+
+            if (usuario.existeEmailExcluyendo()) {
+                this.mostrarMensaje(
+                        "El email ingresado ya pertenece a un usuario registrado. "
                                 + "Ingrese un nombre diferente.");
                 return;
             }
 
             if (usuario.modificarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Usuario modificado exitosamente.");
                 cargarTablaModificar();
                 limpiarFormularioModificar();
+                cardLayout.show(panelPrincipal, "Modificar");
             } else {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Problemas con bases de datos. "
                                 + "Contactar a soporte.");
             }
@@ -411,7 +511,7 @@ public class VentanaUsuarios extends JFrame {
 
         btnEliminar.addActionListener(e -> {
             if (idUsuarioSeleccionadoEliminar == 0) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Seleccione un usuario de la tabla.");
                 return;
             }
@@ -429,21 +529,20 @@ public class VentanaUsuarios extends JFrame {
             Usuario usuario = new Usuario();
             usuario.setIdUsuario(idUsuarioSeleccionadoEliminar);
 
-            UsuarioMD usuarioMD = new UsuarioMD();
-            if (usuarioMD.verificarMovimientos(usuario)) {
-                MenuPrincipal.mostrarMensaje(
+            if (usuario.verificarMovimientos()) {
+                this.mostrarMensaje(
                         "No se puede eliminar el usuario porque "
                                 + "tiene registros asociados.");
                 return;
             }
 
             if (usuario.borrarDP()) {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Usuario eliminado exitosamente.");
                 cargarTablaEliminar();
                 idUsuarioSeleccionadoEliminar = 0;
             } else {
-                MenuPrincipal.mostrarMensaje(
+                this.mostrarMensaje(
                         "Problemas con bases de datos. "
                                 + "Contactar a soporte.");
             }
@@ -461,21 +560,16 @@ public class VentanaUsuarios extends JFrame {
     private void cargarTablaModificar() {
         modeloModificar.setRowCount(0);
         Usuario usuario = new Usuario();
-        ResultSet rs = usuario.buscarUsuarios();
-        try {
-            if (rs != null) {
-                while (rs.next()) {
-                    modeloModificar.addRow(new Object[] {
-                            rs.getInt("id_usuario"),
-                            rs.getString("nombre"),
-                            rs.getString("email"),
-                            rs.getString("telefono")
-                    });
-                }
+        List<Usuario> lista = usuario.buscarUsuarios();
+        if (lista != null) {
+            for (Usuario u : lista) {
+                modeloModificar.addRow(new Object[] {
+                        u.getIdUsuario(),
+                        u.getNombre(),
+                        u.getEmail(),
+                        u.getTelefono()
+                });
             }
-        } catch (SQLException ex) {
-            MenuPrincipal.mostrarMensaje(
-                    "Problemas con bases de datos. Contactar a soporte.");
         }
     }
 
@@ -485,21 +579,16 @@ public class VentanaUsuarios extends JFrame {
     private void cargarTablaEliminar() {
         modeloEliminar.setRowCount(0);
         Usuario usuario = new Usuario();
-        ResultSet rs = usuario.buscarUsuarios();
-        try {
-            if (rs != null) {
-                while (rs.next()) {
-                    modeloEliminar.addRow(new Object[] {
-                            rs.getInt("id_usuario"),
-                            rs.getString("nombre"),
-                            rs.getString("email"),
-                            rs.getString("telefono")
-                    });
-                }
+        List<Usuario> lista = usuario.buscarUsuarios();
+        if (lista != null) {
+            for (Usuario u : lista) {
+                modeloEliminar.addRow(new Object[] {
+                        u.getIdUsuario(),
+                        u.getNombre(),
+                        u.getEmail(),
+                        u.getTelefono()
+                });
             }
-        } catch (SQLException ex) {
-            MenuPrincipal.mostrarMensaje(
-                    "Problemas con bases de datos. Contactar a soporte.");
         }
     }
 
@@ -511,8 +600,7 @@ public class VentanaUsuarios extends JFrame {
         modeloConsultar.setRowCount(0);
         lblMensajeConsulta.setText(" ");
         Usuario usuario = new Usuario();
-        ResultSet rs;
-
+        List<Usuario> rs;
         String nombreFiltro = txtNombreConsultar.getText().trim();
         if (nombreFiltro.isEmpty()) {
             rs = usuario.buscarUsuarios();
@@ -522,32 +610,24 @@ public class VentanaUsuarios extends JFrame {
             rs = usuario.buscarUsuarios(filtro);
         }
 
-        try {
-            if (rs != null) {
-                boolean hayResultados = false;
-                while (rs.next()) {
-                    hayResultados = true;
-                    modeloConsultar.addRow(new Object[] {
-                            rs.getInt("id_usuario"),
-                            rs.getString("nombre"),
-                            rs.getString("email"),
-                            rs.getString("telefono")
-                    });
-                }
-                if (!hayResultados) {
-                    if (nombreFiltro.isEmpty()) {
-                        lblMensajeConsulta.setText(
-                                "No hay usuarios registrados.");
-                    } else {
-                        lblMensajeConsulta.setText(
-                                "No se encontraron resultados "
-                                        + "para su búsqueda.");
-                    }
+        if (rs != null) {
+            boolean hayResultados = false;
+            for (Usuario u : rs) {
+                hayResultados = true;
+                modeloConsultar.addRow(new Object[] {
+                        u.getIdUsuario(),
+                        u.getNombre(),
+                        u.getEmail(),
+                        u.getTelefono()
+                });
+            }
+            if (!hayResultados) {
+                if (nombreFiltro.isEmpty()) {
+                    lblMensajeConsulta.setText("No hay usuarios registrados.");
+                } else {
+                    lblMensajeConsulta.setText("No se encontraron resultados para su búsqueda.");
                 }
             }
-        } catch (SQLException ex) {
-            MenuPrincipal.mostrarMensaje(
-                    "Problemas con bases de datos. Contactar a soporte.");
         }
     }
 
@@ -571,5 +651,13 @@ public class VentanaUsuarios extends JFrame {
         txtPasswordModificar.setText("");
         idUsuarioSeleccionadoModificar = 0;
         tablaModificar.clearSelection();
+    }
+
+    public void mostrarListado() {
+        // Método para cumplir con el diagrama de clases
+    }
+
+    public void mostrarMensaje(String texto) {
+        JOptionPane.showMessageDialog(this, texto);
     }
 }

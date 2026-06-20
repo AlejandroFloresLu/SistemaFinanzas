@@ -24,12 +24,11 @@ public class CategoriaMD {
      * @return true si la inserción fue exitosa, false en caso contrario
      */
     public boolean insertar(Categoria categoria) {
-        String sql = "INSERT INTO categoria (nombre, descripcion, estado) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO categoria (nombre, estado) VALUES (?, ?)";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
             ps.setString(1, categoria.getNombre());
-            ps.setString(2, categoria.getDescripcion());
-            ps.setBoolean(3, categoria.getEstado());
+            ps.setBoolean(2, categoria.getEstado());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -44,13 +43,12 @@ public class CategoriaMD {
      * @return true si la modificación fue exitosa, false en caso contrario
      */
     public boolean modificar(Categoria categoria) {
-        String sql = "UPDATE categoria SET nombre = ?, descripcion = ? "
+        String sql = "UPDATE categoria SET nombre = ? "
                 + "WHERE id_categoria = ?";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
             ps.setString(1, categoria.getNombre());
-            ps.setString(2, categoria.getDescripcion());
-            ps.setInt(3, categoria.getIdCategoria());
+            ps.setInt(2, categoria.getIdCategoria());
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             e.printStackTrace();
@@ -81,40 +79,55 @@ public class CategoriaMD {
      *
      * @return ResultSet con todas las categorías activas
      */
-    public ResultSet consultar() {
-        String sql = "SELECT id_categoria, nombre, descripcion, estado "
+    public List<Categoria> consultar() {
+        List<Categoria> lista = new ArrayList<>();
+        String sql = "SELECT id_categoria, nombre, estado "
                 + "FROM categoria WHERE estado = true ORDER BY id_categoria";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
-            return ps.executeQuery();
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Categoria c = new Categoria();
+                c.setIdCategoria(rs.getInt("id_categoria"));
+                c.setNombre(rs.getString("nombre"));
+                c.setEstado(rs.getBoolean("estado"));
+                lista.add(c);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
-            return null;
         }
+        return lista;
     }
 
     /**
      * Consulta categorías activas filtradas por nombre.
      *
      * @param filtro objeto Categoria con los criterios de búsqueda
-     * @return ResultSet con las categorías que coinciden con el filtro
+     * @return List con las categorías que coinciden con el filtro
      */
-    public ResultSet consultar(Categoria filtro) {
-        String sql = "SELECT id_categoria, nombre, descripcion, estado "
-                + "FROM categoria WHERE estado = true AND nombre LIKE ? "
-                + "ORDER BY id_categoria";
+    public List<Categoria> consultar(Categoria filtro) {
+        List<Categoria> lista = new ArrayList<>();
+        String sql = "SELECT id_categoria, nombre, estado "
+                + "FROM categoria WHERE estado = true AND nombre LIKE ? ORDER BY id_categoria";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
             ps.setString(1, "%" + filtro.getNombre() + "%");
-            return ps.executeQuery();
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                Categoria c = new Categoria();
+                c.setIdCategoria(rs.getInt("id_categoria"));
+                c.setNombre(rs.getString("nombre"));
+                c.setEstado(rs.getBoolean("estado"));
+                lista.add(c);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
-            return null;
         }
+        return lista;
     }
 
     /**
-     * Verifica si ya existe una categoría con el mismo nombre.
+     * Verifica si ya existe una categoría con el mismo nombre en la base de datos.
      *
      * @param categoria objeto Categoria con el nombre a verificar
      * @return true si el nombre ya existe, false en caso contrario
@@ -189,7 +202,7 @@ public class CategoriaMD {
      */
     public List<Categoria> cargarCategoriaList() {
         List<Categoria> lista = new ArrayList<>();
-        String sql = "SELECT id_categoria, nombre, descripcion, estado "
+        String sql = "SELECT id_categoria, nombre, estado "
                 + "FROM categoria WHERE estado = true ORDER BY id_categoria";
         try {
             PreparedStatement ps = Conexion.getConexion().prepareStatement(sql);
@@ -198,7 +211,6 @@ public class CategoriaMD {
                 Categoria categoria = new Categoria();
                 categoria.setIdCategoria(rs.getInt("id_categoria"));
                 categoria.setNombre(rs.getString("nombre"));
-                categoria.setDescripcion(rs.getString("descripcion"));
                 categoria.setEstado(rs.getBoolean("estado"));
                 lista.add(categoria);
             }
